@@ -71,7 +71,12 @@ func sendDaily(store *storage.Storage, userID int64) error {
 		return err
 	}
 
-	if waiting == 0 {
+	continuing, err := continuingTitle(store, userID)
+	if err != nil {
+		return err
+	}
+
+	if waiting == 0 && continuing == "" {
 		return nil
 	}
 
@@ -86,7 +91,7 @@ func sendDaily(store *storage.Storage, userID int64) error {
 	}
 
 	stats := stream.NewStats(readingDays, timezone.Now(user.Timezone))
-	return send(store, userID, compose(locale.NewPrinter(user.Language), stats, waiting, headline))
+	return send(store, userID, compose(locale.NewPrinter(user.Language), stats, waiting, headline, continuing))
 }
 
 func nextHeadline(store *storage.Storage, userID int64) (string, error) {
@@ -95,7 +100,25 @@ func nextHeadline(store *storage.Storage, userID int64) (string, error) {
 		return "", err
 	}
 
-	entry, err := store.NewEntryQueryBuilder(userID).WithEntryIDs(entryIDs...).GetEntry()
+	return entryTitle(store, userID, entryIDs[0])
+}
+
+func continuingTitle(store *storage.Storage, userID int64) (string, error) {
+	entryID, err := store.ContinueEntryID(userID)
+	if err != nil || entryID == 0 {
+		return "", err
+	}
+
+	positions, err := store.ReadingPositions(userID, []int64{entryID})
+	if err != nil || positions[entryID] == nil {
+		return "", err
+	}
+
+	return entryTitle(store, userID, entryID)
+}
+
+func entryTitle(store *storage.Storage, userID, entryID int64) (string, error) {
+	entry, err := store.NewEntryQueryBuilder(userID).WithEntryIDs(entryID).GetEntry()
 	if err != nil || entry == nil {
 		return "", err
 	}
@@ -103,7 +126,7 @@ func nextHeadline(store *storage.Storage, userID int64) (string, error) {
 	return entry.Title, nil
 }
 
-func compose(printer *locale.Printer, stats stream.Stats, waiting int, headline string) *message {
+func compose(printer *locale.Printer, stats stream.Stats, waiting int, headline, continuing string) *message {
 	title := printer.Print("reminder.title")
 	if stats.Streak > 0 && stats.ReadToday == 0 {
 		title = printer.Printf("reminder.title.streak", stats.Streak)
@@ -111,7 +134,18 @@ func compose(printer *locale.Printer, stats stream.Stats, waiting int, headline 
 
 	return &message{
 		Title: title,
-		Body:  printer.Printf("reminder.body", waiting, truncate(headline)),
+		Body:  composeBody(printer, waiting, headline, continuing),
+	}
+}
+
+func composeBody(printer *locale.Printer, waiting int, headline, continuing string) string {
+	switch {
+	case continuing == "":
+		return printer.Printf("reminder.body", waiting, truncate(headline))
+	case waiting == 0:
+		return printer.Printf("reminder.body.continue", truncate(continuing))
+	default:
+		return printer.Printf("reminder.body.waiting_continue", waiting, truncate(continuing))
 	}
 }
 

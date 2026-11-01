@@ -27,17 +27,21 @@
     </div>
 </aside>
 
-{{ if .cards }}
+{{ if or .cards .continueCard }}
 <div
     class="stream"
     data-auto-read="true"
     data-read-url="{{ routePath "/stream/read" }}"
     data-push-device-url="{{ routePath "/reminder/device" }}"
     data-label-copied="{{ t "stream.toast.link_copied" }}"
+    data-label-minutes-left="{{ t "stream.saved.minutes_left" "{n}" }}"
 >
     <p class="stream-hint" hidden>{{ t "stream.hint" }}</p>
+    {{ with .continueCard }}
+    {{ template "continue_card" dict "card" . "user" $.user }}
+    {{ end }}
     {{ range .cards }}
-    {{ template "stream_card" dict "card" . "user" $.user "route" "/unread/entry/%d" }}
+    {{ template "stream_card" dict "card" . "user" $.user "route" "/unread/entry/%d" "destinations" $.destinations }}
     {{ end }}
 </div>
 {{ end }}
@@ -86,13 +90,19 @@
     {{ end }}
 </section>
 
-{{ if .cards }}
+{{ if or .cards .continueCard }}
 {{ template "stream_reader" . }}
 {{ end }}
 {{ end }}
 
 {{ define "reader_content" }}
-<article class="reader-article" dir="auto" {{ with or .entry.Language .entry.Feed.Language }}lang="{{ . }}"{{ end }}>
+<article
+    class="reader-article"
+    dir="auto"
+    {{ with or .entry.Language .entry.Feed.Language }}lang="{{ . }}"{{ end }}
+    {{ with .position }}data-block="{{ .Block }}" data-blocks="{{ .Blocks }}"{{ end }}
+    data-reading-time="{{ if .user.ShowReadingTime }}{{ .entry.ReadingTime }}{{ else }}0{{ end }}"
+>
     <header class="reader-header">
         <p class="reader-source">{{ .entry.Feed.Title }}</p>
         <h1 id="reader-title">{{ .entry.Title }}</h1>
@@ -117,12 +127,13 @@
         {{ safeHTML (proxyFilter .entry.Content) }}
     </div>
     <footer class="reader-footer">
+        <button class="finish-button" type="button" data-reader-finish {{ if not .entry.Starred }}hidden{{ end }}>{{ t "stream.action.finished" }}</button>
         <button class="finish-button finish-button-quiet" type="button" data-reader-full data-url="{{ routePath "/entry/download/%d" .entry.ID }}">{{ t "stream.action.full_article" }}</button>
         {{ if .entry.CommentsURL }}
         <a class="finish-button finish-button-quiet" href="{{ .entry.CommentsURL | untrustedURL }}" {{ if .user.OpenExternalLinksInNewTab }}target="_blank"{{ else }}rel="noopener"{{ end }}>{{ t "stream.action.comments" }}</a>
         {{ end }}
         {{ if .hasSaveEntry }}
-        <button class="finish-button finish-button-quiet" type="button" data-reader-send data-url="{{ routePath "/entry/save/%d" .entry.ID }}" data-label-done="{{ t "stream.toast.sent" }}">{{ t "stream.action.send" }}</button>
+        <button class="finish-button finish-button-quiet" type="button" data-reader-send-all data-url="{{ routePath "/entry/save/%d" .entry.ID }}" data-label-done="{{ t "stream.toast.sent" }}">{{ t "stream.action.send" }}</button>
         {{ end }}
         <a class="finish-button finish-button-quiet" href="{{ routePath "/unread/entry/%d" .entry.ID }}">{{ t "stream.action.all_options" }}</a>
     </footer>

@@ -21,22 +21,37 @@ func (h *handler) showStarredPage(w http.ResponseWriter, r *http.Request) {
 
 	offset := request.QueryIntParam(r, "offset", 0)
 
-	entries, count, err := h.store.NewEntryQueryBuilder(user.ID).
-		WithStarred(true).
-		WithEnclosures().
-		WithSorting("changed_at", "DESC").
-		WithSorting("id", "DESC").
-		WithOffset(offset).
-		WithLimit(user.EntriesPerPage).
-		GetEntriesWithCount()
+	count, err := h.store.NewEntryQueryBuilder(user.ID).WithStarred(true).CountEntries()
 	if err != nil {
 		response.HTMLServerError(w, r, err)
 		return
 	}
 
+	entryIDs, err := h.store.SavedEntryIDs(user.ID, user.EntriesPerPage, offset)
+	if err != nil {
+		response.HTMLServerError(w, r, err)
+		return
+	}
+
+	cards, err := h.savedCards(user.ID, entryIDs)
+	if err != nil {
+		response.HTMLServerError(w, r, err)
+		return
+	}
+
+	destinations, err := h.sendDestinations(user.ID)
+	if err != nil {
+		response.HTMLServerError(w, r, err)
+		return
+	}
+
+	continuing, upNext := stream.SplitStarted(cards)
+
 	view := view.New(h.tpl, r)
 	view.Set("total", count)
-	view.Set("cards", stream.NewCards(entries))
+	view.Set("continuing", continuing)
+	view.Set("cards", upNext)
+	view.Set("destinations", destinations)
 	view.Set("pagination", getPagination(h.routePath("/starred"), count, offset, user.EntriesPerPage))
 	view.Set("menu", "starred")
 	view.Set("user", user)

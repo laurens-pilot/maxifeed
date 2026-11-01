@@ -4,6 +4,11 @@ const STREAM_READ_FLUSH_DELAY = 1500;
 const STREAM_FEED_CHECK_DELAY = 4000;
 const STREAM_HINT_STORAGE_KEY = "stream-hint-seen";
 const READER_DISMISS_DISTANCE = 120;
+const READER_POSITION_DELAY = 1500;
+const READER_SETTLE_DELAY = 4000;
+const READER_TIME_LEFT_MINIMUM = 3;
+const READER_BLOCKS = ".entry-content :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, pre, figure, table, img, video)";
+const STREAM_CARD = ".card:not(.card-continue)";
 const CONFETTI_PIECES = 36;
 
 class StreamHandler {
@@ -14,18 +19,26 @@ class StreamHandler {
         this.readerBody = this.reader.querySelector(".reader-body");
         this.readerSave = this.reader.querySelector("[data-reader-save]");
         this.readerOriginal = this.reader.querySelector("[data-reader-original]");
+        this.readerBar = this.reader.querySelector(".reader-bar");
+        this.readerProgress = this.reader.querySelector(".reader-progress");
+        this.readerLeft = this.reader.querySelector(".reader-left");
+        this.sendSheet = document.getElementById("send-sheet");
         this.progressFill = document.querySelector(".stream-progress-fill");
         this.progressCount = document.querySelector(".stream-count-done");
-        this.totalCards = stream.querySelectorAll(".card").length;
+        this.totalCards = stream.querySelectorAll(STREAM_CARD).length;
         this.htmlPolicy = trustedTypes.createPolicy("html", { createHTML: (html) => html });
         this.reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         this.doneCards = new Set();
         this.pendingReads = new Set();
         this.flushTimer = null;
         this.openCard = null;
+        this.sendCard = null;
         this.swipe = null;
         this.readerDrag = null;
         this.ignoreNextClick = false;
+        this.positionTimer = null;
+        this.scrollFrame = null;
+        this.savedBlock = 0;
     }
 
     listen() {
@@ -44,12 +57,18 @@ class StreamHandler {
         this.reader.addEventListener("touchstart", (event) => this.onReaderTouchStart(event), { passive: true });
         this.reader.addEventListener("touchmove", (event) => this.onReaderTouchMove(event), { passive: false });
         this.reader.addEventListener("touchend", () => this.onReaderTouchEnd());
+        this.reader.addEventListener("scroll", () => this.onReaderScroll(), { passive: true });
+        this.sendSheet?.addEventListener("click", (event) => this.onSendSheetClick(event));
 
         window.addEventListener("popstate", () => this.closeReader());
-        window.addEventListener("pagehide", () => this.flushReads(true));
+        window.addEventListener("pagehide", () => {
+            this.flushReads(true);
+            this.savePosition(true);
+        });
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "hidden") {
                 this.flushReads(true);
+                this.savePosition(true);
             }
         });
 
@@ -76,7 +95,7 @@ class StreamHandler {
             });
         }, { rootMargin: `-${headerHeight}px 0px 0px 0px` });
 
-        this.stream.querySelectorAll(".card").forEach((card) => observer.observe(card));
+        this.stream.querySelectorAll(STREAM_CARD).forEach((card) => observer.observe(card));
     }
 
     observeFinishLine() {
@@ -127,6 +146,8 @@ class StreamHandler {
     }
 
     markDone(card) {
+        if (!card.matches(STREAM_CARD)) return;
+
         this.doneCards.add(card.dataset.id);
 
         if (this.progressFill) {
@@ -181,10 +202,11 @@ class StreamHandler {
 
     setSaved(card, saved) {
         card.dataset.starred = saved;
-        card.querySelector("[data-card-save]").setAttribute("aria-pressed", saved);
+        card.querySelector("[data-card-save]")?.setAttribute("aria-pressed", saved);
 
         if (card === this.openCard) {
             this.readerSave.setAttribute("aria-pressed", saved);
+            this.readerBody.querySelector("[data-reader-finish]")?.toggleAttribute("hidden", !saved);
         }
     }
 
@@ -204,6 +226,10 @@ class StreamHandler {
         } else if (card.dataset.passed === "true") {
             this.markRead(card);
         }
+
+        if (saved && card === this.openCard) {
+            this.savePosition();
+        }
     }
 
     keepUnread(card) {
@@ -217,8 +243,18 @@ class StreamHandler {
 
     skip(card) {
         if (!this.autoRead && card.dataset.starred === "true") {
-            sendPOSTRequest(card.dataset.starUrl);
+            this.finish(card);
+            return;
         }
+
+        this.markDone(card);
+        this.markRead(card);
+        this.removeCard(card);
+    }
+
+    finish(card) {
+        card.dataset.starred = "false";
+        sendPOSTRequest(card.dataset.finishUrl);
 
         this.markDone(card);
         this.markRead(card);
@@ -258,6 +294,8 @@ class StreamHandler {
         const control = event.target.closest("a, button");
         if (control?.matches("[data-card-save]")) {
             this.toggleSave(card);
+        } else if (control?.matches("[data-card-send]")) {
+            this.openSendSheet(card);
         } else if (control?.matches("[data-card-share]")) {
             this.share(card);
         } else if (control?.matches("[data-card-skip]")) {
@@ -279,7 +317,7 @@ class StreamHandler {
         this.ignoreNextClick = false;
         if (event.pointerType !== "touch" || !event.isPrimary) return;
 
-        const card = event.target.closest(".card");
+        const card = event.target.closest(STREAM_CARD);
         if (card) {
             this.swipe = {
                 card,
@@ -344,6 +382,8 @@ class StreamHandler {
         this.openCard = card;
         this.readerSave.setAttribute("aria-pressed", card.dataset.starred);
         this.readerOriginal.href = card.dataset.link;
+        this.readerProgress.value = 0;
+        this.readerLeft.textContent = "";
         this.reader.showModal();
         this.reader.scrollTop = 0;
         history.pushState({ reader: true }, "");
@@ -361,11 +401,109 @@ class StreamHandler {
         const html = await response.text();
         if (this.openCard === card) {
             this.readerBody.innerHTML = this.htmlPolicy.createHTML(html);
+            this.restorePosition();
+        }
+    }
+
+    readerArticle() {
+        return this.readerBody.querySelector(".reader-article");
+    }
+
+    readerBlocks() {
+        return [...this.readerBody.querySelectorAll(READER_BLOCKS)];
+    }
+
+    restorePosition() {
+        const { block = 0, blocks = 1 } = this.readerArticle().dataset;
+        const savedBlocks = Number(blocks);
+        this.savedBlock = Number(block);
+        this.showTimeLeft(this.savedBlock, savedBlocks);
+
+        const elements = this.readerBlocks();
+        if (this.savedBlock > 0 && elements.length > 0) {
+            const index = Math.round((this.savedBlock / savedBlocks) * elements.length);
+            this.keepInView(elements[Math.min(index, elements.length - 1)]);
+        }
+    }
+
+    keepInView(element) {
+        const align = () => {
+            this.reader.scrollTop += element.getBoundingClientRect().top - this.readerBar.getBoundingClientRect().bottom;
+        };
+
+        const settled = new AbortController();
+        const { signal } = settled;
+        this.readerBody.addEventListener("load", align, { capture: true, signal });
+        ["touchstart", "wheel", "pointerdown", "keydown"].forEach((type) => {
+            this.reader.addEventListener(type, () => settled.abort(), { signal });
+        });
+        setTimeout(() => settled.abort(), READER_SETTLE_DELAY);
+
+        align();
+    }
+
+    currentBlock(elements) {
+        const top = this.readerBar.getBoundingClientRect().bottom;
+        const index = elements.findIndex((element) => element.getBoundingClientRect().bottom > top);
+        return index === -1 ? elements.length : index;
+    }
+
+    onReaderScroll() {
+        if (!this.openCard) return;
+
+        cancelAnimationFrame(this.scrollFrame);
+        this.scrollFrame = requestAnimationFrame(() => {
+            const distance = this.reader.scrollHeight - this.reader.clientHeight;
+            this.readerProgress.value = distance > 0 ? this.reader.scrollTop / distance : 0;
+        });
+
+        clearTimeout(this.positionTimer);
+        this.positionTimer = setTimeout(() => this.savePosition(), READER_POSITION_DELAY);
+    }
+
+    savePosition(keepalive = false) {
+        clearTimeout(this.positionTimer);
+
+        const elements = this.readerBlocks();
+        if (!this.openCard || elements.length === 0) return;
+
+        const block = this.currentBlock(elements);
+        this.showTimeLeft(block, elements.length);
+
+        if (this.openCard.dataset.starred !== "true" || block === this.savedBlock) return;
+
+        this.savedBlock = block;
+        this.showCardProgress(this.openCard, block, elements.length);
+        sendPOSTRequest(this.openCard.dataset.positionUrl, { block, blocks: elements.length }, keepalive).catch(() => {});
+    }
+
+    minutesLeftLabel(block, blocks) {
+        const readingTime = Number(this.readerArticle().dataset.readingTime);
+        const minutes = Math.max(1, Math.ceil(readingTime * (1 - block / blocks)));
+        return this.stream.dataset.labelMinutesLeft.replace("{n}", minutes);
+    }
+
+    showTimeLeft(block, blocks) {
+        if (Number(this.readerArticle().dataset.readingTime) >= READER_TIME_LEFT_MINIMUM) {
+            this.readerLeft.textContent = this.minutesLeftLabel(block, blocks);
+        }
+    }
+
+    showCardProgress(card, block, blocks) {
+        const progress = card.querySelector(".card-progress");
+        progress.value = Math.max(1, (block / blocks) * 100);
+        progress.hidden = block === 0;
+
+        const readingTime = card.querySelector(".card-reading-time");
+        if (readingTime && block > 0) {
+            readingTime.textContent = this.minutesLeftLabel(block, blocks);
         }
     }
 
     async closeReader() {
         if (!this.openCard) return;
+
+        this.savePosition(true);
 
         const card = this.openCard;
         this.openCard = null;
@@ -396,8 +534,43 @@ class StreamHandler {
         } else if (control?.matches("[data-reader-full]")) {
             this.loadFullArticle(control);
         } else if (control?.matches("[data-reader-send]")) {
+            this.openSendSheet(this.openCard);
+        } else if (control?.matches("[data-reader-send-all]")) {
             this.sendToIntegrations(control);
+        } else if (control?.matches("[data-reader-finish]")) {
+            this.finish(this.openCard);
+            history.back();
         }
+    }
+
+    openSendSheet(card) {
+        this.sendCard = card;
+
+        const destinations = this.sendSheet.querySelectorAll("[data-send-destination]");
+        if (destinations.length === 1) {
+            this.sendTo(destinations[0]);
+        } else {
+            this.sendSheet.showModal();
+        }
+    }
+
+    onSendSheetClick(event) {
+        const destination = event.target.closest("[data-send-destination]");
+        if (destination) {
+            this.sendTo(destination);
+        }
+
+        if (destination || event.target === this.sendSheet) {
+            this.sendSheet.close();
+        }
+    }
+
+    async sendTo(button) {
+        const { sendDestination, labelDone, labelFailed } = button.dataset;
+        navigator.vibrate?.(10);
+
+        const response = await sendPOSTRequest(`${this.sendCard.dataset.sendUrl}/${sendDestination}`).catch(() => null);
+        showToastNotification("read", response?.ok ? labelDone : labelFailed);
     }
 
     async sendToIntegrations(button) {

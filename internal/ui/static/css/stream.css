@@ -434,6 +434,116 @@ html:has(dialog.reader[open]) {
     color: var(--ink-soft);
 }
 
+.card-progress,
+.reader-progress {
+    display: block;
+    border: 0;
+    background: var(--line);
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.card-progress {
+    width: calc(100% - 32px);
+    height: 5px;
+    margin: 4px 16px 2px;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.reader-progress {
+    position: absolute;
+    inset: auto 0 0;
+    width: 100%;
+    height: 3px;
+    background: transparent;
+}
+
+.card-progress::-webkit-progress-bar,
+.reader-progress::-webkit-progress-bar {
+    background: transparent;
+}
+
+.card-progress::-webkit-progress-value,
+.reader-progress::-webkit-progress-value {
+    background: var(--accent);
+}
+
+.card-progress::-moz-progress-bar,
+.reader-progress::-moz-progress-bar {
+    background: var(--accent);
+}
+
+.stream-section {
+    margin: 10px 8px -4px;
+    border: 0;
+    font-family: var(--font-rounded);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+}
+
+.card-continue .card-face {
+    padding-bottom: 10px;
+}
+
+.continue-link,
+.continue-link:visited {
+    display: grid;
+    gap: 4px;
+    padding: 14px 16px 6px;
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.continue-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-rounded);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.continue-label .icon {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+.continue-title {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 1.08rem;
+    font-weight: 750;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}
+
+.continue-meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+}
+
+.continue-source {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.continue-meta .card-reading-time {
+    flex: none;
+    padding: 0;
+}
+
 .card-reading-time + .card-skip {
     margin-left: 0;
 }
@@ -632,7 +742,12 @@ dialog.reader::backdrop {
 }
 
 .reader-grabber {
+    display: flex;
     flex: 1;
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
 }
 
 .reader-grabber::after {
@@ -640,9 +755,20 @@ dialog.reader::backdrop {
     display: block;
     width: 38px;
     height: 5px;
-    margin: 0 auto;
     border-radius: 3px;
     background: var(--line);
+}
+
+.reader-left {
+    font-family: var(--font-rounded);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+
+.reader-left:empty {
+    display: none;
 }
 
 .reader-button {
@@ -725,6 +851,53 @@ dialog.reader::backdrop {
     flex-direction: column;
     gap: 10px;
     margin-top: 32px;
+}
+
+/* Send sheet */
+dialog.send-sheet {
+    inset: auto 0 0;
+    width: 100%;
+    max-width: 440px;
+    height: auto;
+    margin: 0 auto;
+    padding: 0;
+    border: 0;
+    border-radius: 22px 22px 0 0;
+    background: var(--surface-raised);
+    color: var(--ink);
+}
+
+dialog.send-sheet::backdrop {
+    background: rgb(0 0 0 / 45%);
+}
+
+.send-sheet-body {
+    display: grid;
+    gap: 10px;
+    padding: 20px 16px calc(env(safe-area-inset-bottom) + 20px);
+}
+
+.send-sheet h2 {
+    margin: 0 4px 2px;
+    border: 0;
+    font-family: var(--font-rounded);
+    font-size: 1.15rem;
+}
+
+.send-sheet-button {
+    padding: 15px;
+    border: 0;
+    border-radius: 15px;
+    background: var(--line);
+    color: var(--ink);
+    font: inherit;
+    font-family: var(--font-rounded);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.send-sheet-button:active {
+    transform: scale(0.98);
 }
 
 /* Tab bar */
@@ -1052,6 +1225,10 @@ legend + * {
 
     #toast-wrapper {
         bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom) + 12px);
+    }
+
+    dialog.reader #toast-wrapper {
+        bottom: calc(env(safe-area-inset-bottom) + 20px);
     }
 }
 

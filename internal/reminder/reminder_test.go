@@ -26,7 +26,7 @@ func TestComposeMentionsTheStreakOnlyWhenItIsAtRisk(t *testing.T) {
 
 	for _, scenario := range scenarios {
 		t.Run(scenario.name, func(t *testing.T) {
-			result := compose(printer, scenario.stats, 12, "Dutch election results")
+			result := compose(printer, scenario.stats, 12, "Dutch election results", "")
 
 			if result.Title != scenario.expected {
 				t.Errorf("unexpected title %q", result.Title)
@@ -40,9 +40,23 @@ func TestComposeMentionsTheStreakOnlyWhenItIsAtRisk(t *testing.T) {
 }
 
 func TestComposeShortensLongHeadlines(t *testing.T) {
-	result := compose(locale.NewPrinter("en_US"), stream.Stats{}, 1, strings.Repeat("é", 500))
+	result := compose(locale.NewPrinter("en_US"), stream.Stats{}, 1, strings.Repeat("é", 500), "")
 
 	if !strings.HasSuffix(result.Body, strings.Repeat("é", maxHeadlineLength)+"…") {
 		t.Errorf("unexpected body %q", result.Body)
+	}
+}
+
+func TestComposeMentionsTheArticleInProgress(t *testing.T) {
+	printer := locale.NewPrinter("en_US")
+
+	waiting := compose(printer, stream.Stats{}, 12, "Dutch election results", "A very long read")
+	if !strings.Contains(waiting.Body, "12") || !strings.Contains(waiting.Body, "A very long read") {
+		t.Errorf("unexpected body %q", waiting.Body)
+	}
+
+	caughtUp := compose(printer, stream.Stats{}, 0, "", "A very long read")
+	if !strings.Contains(caughtUp.Body, "A very long read") || strings.Contains(caughtUp.Body, "0") {
+		t.Errorf("unexpected body %q", caughtUp.Body)
 	}
 }

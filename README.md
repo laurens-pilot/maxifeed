@@ -6,6 +6,8 @@ Instead of a growing unread list, you get a short batch of posts to scroll throu
 
 - **Scroll to clear:** a post is marked as read once it scrolls off the top of the screen.
 - **Save for later:** swipe a card right (or tap the bookmark) to keep it unread in your Saved list. Swipe left to skip it.
+- **Long reads in stints:** a saved article remembers your place on every device and shows the time left. Home and the daily reminder bring you back to it, and Finished clears it from Saved.
+- **Readeck and Raindrop:** send a post to either service in two taps from a card or the reader, and see right away whether it arrived.
 - **Batches, not backlogs:** each session is 25 posts with a clear finish line, then keep going or clear the rest.
 - **Fair by default:** feeds take turns, so one busy feed can't bury a quiet one.
 - **Streaks:** a daily reading streak gives you a reason to come back.
@@ -35,6 +37,7 @@ scripts/build-binary.sh amd64
 ```
 
 The service needs `RUN_MIGRATIONS=1` so that database updates apply on start. Notifications need HTTPS.
+If Readeck runs on the same server or a private address, the service also needs `INTEGRATION_ALLOW_PRIVATE_NETWORKS=1`.
 
 Features
 --------

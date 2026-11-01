@@ -46,6 +46,8 @@ func Serve(store *storage.Storage, pool *worker.Pool) http.Handler {
 	mux.HandleFunc("GET /stream/entry/{entryID}", handler.showStreamEntry)
 	mux.HandleFunc("POST /stream/read", handler.markStreamEntriesAsRead)
 	mux.HandleFunc("POST /stream/clear", handler.clearStream)
+	mux.HandleFunc("POST /stream/position/{entryID}", handler.saveReadingPosition)
+	mux.HandleFunc("POST /stream/finish/{entryID}", handler.finishSavedEntry)
 
 	// Reminder page.
 	mux.HandleFunc("GET /reminder", handler.showReminderPage)
@@ -115,6 +117,7 @@ func Serve(store *storage.Storage, pool *worker.Pool) http.Handler {
 	// Entry pages.
 	mux.HandleFunc("POST /entry/status", handler.updateEntriesStatus)
 	mux.HandleFunc("POST /entry/save/{entryID}", handler.saveEntry)
+	mux.HandleFunc("POST /entry/send/{entryID}/{destination}", handler.sendEntry)
 	mux.HandleFunc("POST /entry/enclosure/{enclosureID}/save-progression", handler.saveEnclosureProgression)
 	mux.HandleFunc("POST /entry/download/{entryID}", handler.fetchContent)
 	mux.HandleFunc("POST /entry/star/{entryID}", handler.toggleStarred)

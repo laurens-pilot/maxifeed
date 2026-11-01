@@ -1642,4 +1642,19 @@ var migrations = [...]func(tx *sql.Tx) error{
 		_, err = tx.Exec(`INSERT INTO vapid_keys (private_key) VALUES ($1)`, privateKey)
 		return err
 	},
+	func(tx *sql.Tx) (err error) {
+		sql := `
+			CREATE TABLE reading_positions (
+				entry_id bigint primary key references entries(id) on delete cascade,
+				user_id bigint not null references users(id) on delete cascade,
+				block int not null,
+				block_count int not null,
+				updated_at timestamptz not null default now()
+			);
+
+			CREATE INDEX reading_positions_user_id_idx ON reading_positions(user_id, updated_at DESC);
+		`
+		_, err = tx.Exec(sql)
+		return err
+	},
 }

@@ -272,7 +272,8 @@ function showToastNotification(iconType, notificationMessage) {
         toastElementWrapper.remove();
     });
 
-    document.body.appendChild(toastElementWrapper);
+    const toastHost = document.querySelector("dialog[open]") ?? document.body;
+    toastHost.appendChild(toastElementWrapper);
 
     setTimeout(() => toastElementWrapper.classList.add("toast-animate"), 100);
 }

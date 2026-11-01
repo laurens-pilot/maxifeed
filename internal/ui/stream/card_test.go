@@ -99,3 +99,42 @@ func TestNewCardsFallsBackForFeedTitlesWithoutLetters(t *testing.T) {
 		t.Fatalf(`Expected "#", got %q`, initial)
 	}
 }
+
+func TestSavedCardsReportProgress(t *testing.T) {
+	entries := model.Entries{
+		{ID: 1, ReadingTime: 20, Feed: &model.Feed{Title: "Started"}},
+		{ID: 2, ReadingTime: 12, Feed: &model.Feed{Title: "New"}},
+		{ID: 3, ReadingTime: 0, Feed: &model.Feed{Title: "No estimate"}},
+		{ID: 4, ReadingTime: 10, Feed: &model.Feed{Title: "At the end"}},
+	}
+	positions := map[int64]*model.ReadingPosition{
+		1: {Block: 25, Blocks: 100},
+		3: {Block: 1, Blocks: 2},
+		4: {Block: 50, Blocks: 50},
+	}
+
+	cards := NewSavedCards(entries, positions)
+
+	scenarios := []struct {
+		started bool
+		percent int
+		minutes int
+	}{
+		{true, 25, 15},
+		{false, 0, 12},
+		{true, 50, 0},
+		{true, 100, 1},
+	}
+
+	for index, scenario := range scenarios {
+		card := cards[index]
+		if card.Started() != scenario.started || card.Percent() != scenario.percent || card.MinutesLeft() != scenario.minutes {
+			t.Errorf("card %d: got started=%v percent=%d minutes=%d", index, card.Started(), card.Percent(), card.MinutesLeft())
+		}
+	}
+
+	started, notStarted := SplitStarted(cards)
+	if len(started) != 3 || len(notStarted) != 1 || notStarted[0].Entry.ID != 2 {
+		t.Errorf("unexpected split: %d started, %d not started", len(started), len(notStarted))
+	}
+}

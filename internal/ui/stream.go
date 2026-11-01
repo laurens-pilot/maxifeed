@@ -6,12 +6,14 @@ package ui // import "miniflux.app/v2/internal/ui"
 import (
 	"cmp"
 	json_parser "encoding/json"
+	"errors"
 	"net/http"
 	"slices"
 	"time"
 
 	"miniflux.app/v2/internal/http/request"
 	"miniflux.app/v2/internal/http/response"
+	"miniflux.app/v2/internal/integration"
 	"miniflux.app/v2/internal/model"
 	"miniflux.app/v2/internal/timezone"
 	"miniflux.app/v2/internal/ui/stream"
@@ -20,6 +22,8 @@ import (
 )
 
 const streamBatchSize = 25
+
+var errInvalidReadingPosition = errors.New("ui: invalid reading position")
 
 func (h *handler) showStreamPage(w http.ResponseWriter, r *http.Request) {
 	user, err := h.store.UserByID(request.UserID(r))
@@ -65,8 +69,22 @@ func (h *handler) showStreamPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	continueCard, err := h.continueCard(user.ID)
+	if err != nil {
+		response.HTMLServerError(w, r, err)
+		return
+	}
+
+	destinations, err := h.sendDestinations(user.ID)
+	if err != nil {
+		response.HTMLServerError(w, r, err)
+		return
+	}
+
 	view := view.New(h.tpl, r)
 	view.Set("cards", stream.NewCards(entries))
+	view.Set("continueCard", continueCard)
+	view.Set("destinations", destinations)
 	view.Set("remaining", countWaiting-len(entries))
 	view.Set("hasReminder", len(pushSubscriptions) > 0)
 	view.Set("countSaved", countSaved)
@@ -82,8 +100,53 @@ func (h *handler) showStreamPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) nextStreamEntries(userID int64) (model.Entries, error) {
 	entryIDs, err := h.store.StreamEntryIDs(userID, streamBatchSize)
-	if err != nil || len(entryIDs) == 0 {
+	if err != nil {
 		return nil, err
+	}
+
+	return h.entriesInOrder(userID, entryIDs)
+}
+
+func (h *handler) continueCard(userID int64) (*stream.Card, error) {
+	entryID, err := h.store.ContinueEntryID(userID)
+	if err != nil || entryID == 0 {
+		return nil, err
+	}
+
+	cards, err := h.savedCards(userID, []int64{entryID})
+	if err != nil || len(cards) == 0 {
+		return nil, err
+	}
+
+	return cards[0], nil
+}
+
+func (h *handler) savedCards(userID int64, entryIDs []int64) ([]*stream.Card, error) {
+	entries, err := h.entriesInOrder(userID, entryIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	positions, err := h.store.ReadingPositions(userID, entryIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return stream.NewSavedCards(entries, positions), nil
+}
+
+func (h *handler) sendDestinations(userID int64) ([]integration.Destination, error) {
+	userIntegrations, err := h.store.Integration(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return integration.Destinations(userIntegrations), nil
+}
+
+func (h *handler) entriesInOrder(userID int64, entryIDs []int64) (model.Entries, error) {
+	if len(entryIDs) == 0 {
+		return nil, nil
 	}
 
 	entries, err := h.store.NewEntryQueryBuilder(userID).
@@ -128,12 +191,54 @@ func (h *handler) showStreamEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	destinations, err := h.sendDestinations(user.ID)
+	if err != nil {
+		response.HTMLServerError(w, r, err)
+		return
+	}
+
+	positions, err := h.store.ReadingPositions(user.ID, []int64{entry.ID})
+	if err != nil {
+		response.HTMLServerError(w, r, err)
+		return
+	}
+
 	view := view.New(h.tpl, r)
 	view.Set("entry", entry)
 	view.Set("user", user)
-	view.Set("hasSaveEntry", navMetadata.HasSaveEntry)
+	view.Set("position", positions[entry.ID])
+	view.Set("hasSaveEntry", navMetadata.HasSaveEntry && len(destinations) == 0)
 
 	response.HTML(w, r, view.RenderFragment("stream", "reader_content"))
+}
+
+func (h *handler) saveReadingPosition(w http.ResponseWriter, r *http.Request) {
+	var position model.ReadingPosition
+	if err := json_parser.NewDecoder(r.Body).Decode(&position); err != nil {
+		response.JSONBadRequest(w, r, err)
+		return
+	}
+
+	if !position.IsValid() {
+		response.JSONBadRequest(w, r, errInvalidReadingPosition)
+		return
+	}
+
+	if err := h.store.SaveReadingPosition(request.UserID(r), request.RouteInt64Param(r, "entryID"), &position); err != nil {
+		response.JSONServerError(w, r, err)
+		return
+	}
+
+	response.JSON(w, r, "OK")
+}
+
+func (h *handler) finishSavedEntry(w http.ResponseWriter, r *http.Request) {
+	if err := h.store.FinishSavedEntry(request.UserID(r), request.RouteInt64Param(r, "entryID")); err != nil {
+		response.JSONServerError(w, r, err)
+		return
+	}
+
+	response.JSON(w, r, "OK")
 }
 
 func (h *handler) markStreamEntriesAsRead(w http.ResponseWriter, r *http.Request) {

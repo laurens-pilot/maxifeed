@@ -4,6 +4,7 @@
 package stream // import "miniflux.app/v2/internal/ui/stream"
 
 import (
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -34,6 +35,7 @@ type Card struct {
 	Excerpt  string
 	Initial  string
 	Hue      int64
+	Position *model.ReadingPosition
 }
 
 // NewCards builds a card for each entry, keeping their order.
@@ -43,6 +45,43 @@ func NewCards(entries model.Entries) []*Card {
 		cards = append(cards, newCard(entry))
 	}
 	return cards
+}
+
+func NewSavedCards(entries model.Entries, positions map[int64]*model.ReadingPosition) []*Card {
+	cards := NewCards(entries)
+	for _, card := range cards {
+		card.Position = positions[card.Entry.ID]
+	}
+	return cards
+}
+
+func SplitStarted(cards []*Card) (started, notStarted []*Card) {
+	for _, card := range cards {
+		if card.Started() {
+			started = append(started, card)
+		} else {
+			notStarted = append(notStarted, card)
+		}
+	}
+	return started, notStarted
+}
+
+func (c *Card) Started() bool {
+	return c.Position != nil
+}
+
+func (c *Card) Percent() int {
+	if !c.Started() {
+		return 0
+	}
+	return max(1, int(c.Position.Fraction()*100))
+}
+
+func (c *Card) MinutesLeft() int {
+	if !c.Started() || c.Entry.ReadingTime == 0 {
+		return c.Entry.ReadingTime
+	}
+	return max(1, int(math.Ceil(float64(c.Entry.ReadingTime)*(1-c.Position.Fraction()))))
 }
 
 func newCard(entry *model.Entry) *Card {

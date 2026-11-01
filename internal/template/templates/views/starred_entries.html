@@ -11,7 +11,7 @@
 {{ end }}
 
 {{ define "content"}}
-{{ if not .cards }}
+{{ if not (or .continuing .cards) }}
     <p role="alert" class="alert alert-info">{{ t "alert.no_starred" }}</p>
 {{ else }}
     <div
@@ -19,9 +19,19 @@
         data-auto-read="false"
         data-read-url="{{ routePath "/stream/read" }}"
         data-label-copied="{{ t "stream.toast.link_copied" }}"
+        data-label-minutes-left="{{ t "stream.saved.minutes_left" "{n}" }}"
     >
+        {{ if .continuing }}
+        <h2 class="stream-section">{{ t "stream.saved.continue" }}</h2>
+        {{ range .continuing }}
+        {{ template "stream_card" dict "card" . "user" $.user "route" "/starred/entry/%d" "destinations" $.destinations }}
+        {{ end }}
+        {{ if .cards }}
+        <h2 class="stream-section">{{ t "stream.saved.up_next" }}</h2>
+        {{ end }}
+        {{ end }}
         {{ range .cards }}
-        {{ template "stream_card" dict "card" . "user" $.user "route" "/starred/entry/%d" }}
+        {{ template "stream_card" dict "card" . "user" $.user "route" "/starred/entry/%d" "destinations" $.destinations }}
         {{ end }}
     </div>
     <div class="pagination-bottom">

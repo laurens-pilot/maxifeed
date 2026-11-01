@@ -1,14 +1,21 @@
+{{ define "card_data" -}}
+data-id="{{ .ID }}"
+data-status="{{ .Status }}"
+data-starred="{{ .Starred }}"
+data-title="{{ .Title }}"
+data-link="{{ .URL | untrustedURL }}"
+data-reader-url="{{ routePath "/stream/entry/%d" .ID }}"
+data-star-url="{{ routePath "/entry/star/%d" .ID }}"
+data-finish-url="{{ routePath "/stream/finish/%d" .ID }}"
+data-position-url="{{ routePath "/stream/position/%d" .ID }}"
+data-send-url="{{ routePath "/entry/send/%d" .ID }}"
+{{- end }}
+
 {{ define "stream_card" }}
 {{ $entry := .card.Entry }}
 <article
     class="card hue-{{ .card.Hue }}"
-    data-id="{{ $entry.ID }}"
-    data-status="{{ $entry.Status }}"
-    data-starred="{{ $entry.Starred }}"
-    data-title="{{ $entry.Title }}"
-    data-link="{{ $entry.URL | untrustedURL }}"
-    data-reader-url="{{ routePath "/stream/entry/%d" $entry.ID }}"
-    data-star-url="{{ routePath "/entry/star/%d" $entry.ID }}"
+    {{ template "card_data" $entry }}
     aria-labelledby="card-title-{{ $entry.ID }}"
 >
     <div class="card-under" aria-hidden="true">
@@ -38,15 +45,42 @@
             <p class="card-excerpt">{{ .card.Excerpt }}</p>
             {{ end }}
         </div>
+        <progress class="card-progress" max="100" value="{{ .card.Percent }}" aria-label="{{ t "stream.saved.continue" }}" {{ if not .card.Started }}hidden{{ end }}></progress>
         <footer class="card-actions">
             <button class="card-action card-save" type="button" data-card-save aria-pressed="{{ $entry.Starred }}" aria-label="{{ t "stream.action.save" }}">{{ icon "bookmark" }}</button>
+            {{ if .destinations }}
+            <button class="card-action" type="button" data-card-send aria-label="{{ t "stream.action.send_to" }}">{{ icon "send" }}</button>
+            {{ end }}
             <a class="card-action" href="{{ $entry.URL | untrustedURL }}" {{ if .user.OpenExternalLinksInNewTab }}target="_blank"{{ else }}rel="noopener"{{ end }} aria-label="{{ t "stream.action.open_original" }}">{{ icon "external-link" }}</a>
             <button class="card-action" type="button" data-card-share aria-label="{{ t "stream.action.share" }}">{{ icon "share" }}</button>
             {{ if and .user.ShowReadingTime (gt $entry.ReadingTime 0) }}
-            <span class="card-reading-time">{{ plural "entry.estimated_reading_time" $entry.ReadingTime $entry.ReadingTime }}</span>
+            <span class="card-reading-time">{{ if .card.Started }}{{ t "stream.saved.minutes_left" .card.MinutesLeft }}{{ else }}{{ plural "entry.estimated_reading_time" $entry.ReadingTime $entry.ReadingTime }}{{ end }}</span>
             {{ end }}
             <button class="card-action card-skip" type="button" data-card-skip aria-label="{{ t "stream.action.skip" }}">{{ icon "read" }}</button>
         </footer>
+    </div>
+</article>
+{{ end }}
+
+{{ define "continue_card" }}
+{{ $entry := .card.Entry }}
+<article
+    class="card card-continue hue-{{ .card.Hue }}"
+    {{ template "card_data" $entry }}
+    aria-labelledby="card-title-{{ $entry.ID }}"
+>
+    <div class="card-face">
+        <a class="continue-link" href="{{ routePath "/starred/entry/%d" $entry.ID }}" data-open-reader>
+            <span class="continue-label">{{ icon "bookmark" }}{{ if .card.Started }}{{ t "stream.saved.continue" }}{{ else }}{{ t "stream.saved.for_later" }}{{ end }}</span>
+            <span class="continue-title" id="card-title-{{ $entry.ID }}" dir="auto">{{ $entry.Title }}</span>
+            <span class="continue-meta">
+                <span class="continue-source">{{ $entry.Feed.Title }}</span>
+                {{ if and .user.ShowReadingTime (gt $entry.ReadingTime 0) }}
+                <span class="card-reading-time">{{ if .card.Started }}{{ t "stream.saved.minutes_left" .card.MinutesLeft }}{{ else }}{{ plural "entry.estimated_reading_time" $entry.ReadingTime $entry.ReadingTime }}{{ end }}</span>
+                {{ end }}
+            </span>
+        </a>
+        <progress class="card-progress" max="100" value="{{ .card.Percent }}" aria-label="{{ t "stream.saved.continue" }}" {{ if not .card.Started }}hidden{{ end }}></progress>
     </div>
 </article>
 {{ end }}
@@ -55,10 +89,24 @@
 <dialog id="reader" class="reader" aria-labelledby="reader-title">
     <div class="reader-bar">
         <button class="reader-button" type="button" data-reader-close aria-label="{{ t "stream.action.close" }}">{{ icon "chevron-down" }}</button>
-        <span class="reader-grabber" aria-hidden="true"></span>
+        <span class="reader-grabber" aria-hidden="true"><span class="reader-left"></span></span>
+        {{ if .destinations }}
+        <button class="reader-button" type="button" data-reader-send aria-label="{{ t "stream.action.send_to" }}">{{ icon "send" }}</button>
+        {{ end }}
         <button class="reader-button reader-save" type="button" data-reader-save aria-pressed="false" aria-label="{{ t "stream.action.save" }}">{{ icon "bookmark" }}</button>
         <a class="reader-button" data-reader-original {{ if .user.OpenExternalLinksInNewTab }}target="_blank"{{ else }}rel="noopener"{{ end }} aria-label="{{ t "stream.action.open_original" }}">{{ icon "external-link" }}</a>
+        <progress class="reader-progress" max="1" value="0" aria-hidden="true"></progress>
     </div>
     <div class="reader-body" tabindex="-1" autofocus></div>
 </dialog>
+{{ if .destinations }}
+<dialog id="send-sheet" class="send-sheet" aria-labelledby="send-sheet-title">
+    <div class="send-sheet-body">
+        <h2 id="send-sheet-title">{{ t "stream.send.title" }}</h2>
+        {{ range .destinations }}
+        <button class="send-sheet-button" type="button" data-send-destination="{{ .ID }}" data-label-done="{{ t "stream.send.done" .Name }}" data-label-failed="{{ t "stream.send.failed" .Name }}">{{ .Name }}</button>
+        {{ end }}
+    </div>
+</dialog>
+{{ end }}
 {{ end }}
