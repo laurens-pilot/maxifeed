@@ -18,11 +18,13 @@ if (!window.trustedTypes || !trustedTypes.createPolicy) {
  *
  * @param {string} url - The URL to send the request to.
  * @param {Object} [body] - The body of the request (optional).
+ * @param {boolean} [keepalive] - Whether the request should outlive the page (optional).
  * @returns {Promise<Response>} The response from the fetch request.
  */
-function sendPOSTRequest(url, body = null) {
+function sendPOSTRequest(url, body = null, keepalive = false) {
     const options = {
         method: "POST",
+        keepalive: keepalive,
         headers: {
             "X-Csrf-Token": document.body.dataset.csrfToken || ""
         }
@@ -1284,6 +1286,36 @@ function initializeClickHandlers() {
     }, true);
 }
 
+/**
+ * Initialize the card stream on the pages that have one.
+ */
+function initializeStream() {
+    const streamElement = document.querySelector(".stream");
+    if (streamElement) {
+        new StreamHandler(streamElement).listen();
+        ReminderHandler.syncDevice(streamElement.dataset.pushDeviceUrl);
+    }
+
+    const checkFeedsButton = document.querySelector("[data-check-feeds]");
+    if (checkFeedsButton) {
+        checkFeedsButton.addEventListener("click", () => StreamHandler.checkFeeds(checkFeedsButton));
+    }
+}
+
+/**
+ * Initialize the install prompt and the daily reminder page.
+ */
+function initializeAppFeatures() {
+    if (document.getElementById("install-sheet")) {
+        new InstallHandler().listen();
+    }
+
+    const reminderSection = document.querySelector(".reminder");
+    if (reminderSection) {
+        new ReminderHandler(reminderSection).listen();
+    }
+}
+
 // Initialize application handlers
 initializeMainMenuHandlers();
 initializeFormHandlers();
@@ -1292,6 +1324,8 @@ initializeWebAuthn();
 initializeKeyboardShortcuts();
 initializeTouchHandler();
 initializeClickHandlers();
+initializeStream();
+initializeAppFeatures();
 initializeServiceWorker();
 
 // Reload the page if it was restored from the back-forward cache and mark entries as read is enabled.

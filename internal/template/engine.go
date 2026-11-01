@@ -39,7 +39,8 @@ func (e *Engine) ParseTemplates() {
 		"add_subscription.html":    {"feed_menu.html", "layout.html", "settings_menu.html"},
 		"api_keys.html":            {"layout.html", "settings_menu.html"},
 		"authentication.html":      {"layout.html", "settings_menu.html"},
-		"starred_entries.html":     {"item_meta.html", "layout.html", "pagination.html"},
+		"starred_entries.html":     {"layout.html", "pagination.html", "stream_card.html"},
+		"stream.html":              {"layout.html", "stream_card.html"},
 		"categories.html":          {"layout.html"},
 		"category_entries.html":    {"item_meta.html", "layout.html", "pagination.html"},
 		"category_feeds.html":      {"feed_list.html", "layout.html"},
@@ -58,6 +59,7 @@ func (e *Engine) ParseTemplates() {
 		"integrations.html":        {"layout.html", "settings_menu.html"},
 		"login.html":               {"layout.html"},
 		"offline.html":             {},
+		"reminder.html":            {"layout.html", "settings_menu.html"},
 		"search.html":              {"item_meta.html", "layout.html", "pagination.html"},
 		"sessions.html":            {"layout.html", "settings_menu.html"},
 		"settings.html":            {"layout.html", "settings_menu.html"},
@@ -90,6 +92,15 @@ func (e *Engine) ParseTemplates() {
 
 // Render process a template.
 func (e *Engine) Render(name string, data map[string]any) []byte {
+	return e.execute(name, "base", data)
+}
+
+// RenderFragment process a single block of a template, without the page layout.
+func (e *Engine) RenderFragment(name, block string, data map[string]any) []byte {
+	return e.execute(name, block, data)
+}
+
+func (e *Engine) execute(name, block string, data map[string]any) []byte {
 	tpl, ok := e.templates[name]
 	if !ok {
 		panic("The template " + name + " does not exists.")
@@ -114,7 +125,7 @@ func (e *Engine) Render(name string, data map[string]any) []byte {
 	})
 
 	var b bytes.Buffer
-	if err := tpl.ExecuteTemplate(&b, "base", data); err != nil {
+	if err := tpl.ExecuteTemplate(&b, block, data); err != nil {
 		panic(err)
 	}
 

@@ -30,6 +30,11 @@ func (v *view) Render(template string) []byte {
 	return v.tpl.Render(template+".html", v.params)
 }
 
+// RenderFragment executes a single block of the template with arguments.
+func (v *view) RenderFragment(template, block string) []byte {
+	return v.tpl.RenderFragment(template+".html", block, v.params)
+}
+
 // New returns a new view with default parameters.
 func New(tpl *template.Engine, r *http.Request) *view {
 	webSession := request.WebSession(r)
@@ -44,7 +49,6 @@ func New(tpl *template.Engine, r *http.Request) *view {
 		"language":            webSession.Language(),
 		"theme_checksum":      static.StylesheetBundles[theme+".css"].Checksum,
 		"app_js_checksum":     static.JavascriptBundles["app.js"].Checksum,
-		"sw_js_checksum":      static.JavascriptBundles["service-worker.js"].Checksum,
 		"webAuthnEnabled":     config.Opts.WebAuthn(),
 	}}
 }

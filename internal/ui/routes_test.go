@@ -16,6 +16,7 @@ func TestIsStaticAssetRoute(t *testing.T) {
 	}{
 		{"/favicon.ico", true},
 		{"/robots.txt", true},
+		{"/service-worker.js", true},
 		{"/stylesheets/checksum/light_serif.css", true},
 		{"/js/checksum/app.js", true},
 		{"/icon/checksum/icon-120.png", true},

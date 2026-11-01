@@ -78,12 +78,12 @@ func GenerateBinaryBundles() error {
 // GenerateStylesheetsBundles creates CSS bundles.
 func GenerateStylesheetsBundles() error {
 	var bundles = map[string][]string{
-		"light_serif":       {"css/light.css", "css/serif.css", "css/common.css"},
-		"light_sans_serif":  {"css/light.css", "css/sans_serif.css", "css/common.css"},
-		"dark_serif":        {"css/dark.css", "css/serif.css", "css/common.css"},
-		"dark_sans_serif":   {"css/dark.css", "css/sans_serif.css", "css/common.css"},
-		"system_serif":      {"css/system.css", "css/serif.css", "css/common.css"},
-		"system_sans_serif": {"css/system.css", "css/sans_serif.css", "css/common.css"},
+		"light_serif":       {"css/light.css", "css/serif.css", "css/common.css", "css/stream.css"},
+		"light_sans_serif":  {"css/light.css", "css/sans_serif.css", "css/common.css", "css/stream.css"},
+		"dark_serif":        {"css/dark.css", "css/serif.css", "css/common.css", "css/stream.css"},
+		"dark_sans_serif":   {"css/dark.css", "css/sans_serif.css", "css/common.css", "css/stream.css"},
+		"system_serif":      {"css/system.css", "css/serif.css", "css/common.css", "css/stream.css"},
+		"system_sans_serif": {"css/system.css", "css/sans_serif.css", "css/common.css", "css/stream.css"},
 	}
 
 	StylesheetBundles = make(map[string]asset, len(bundles))
@@ -123,6 +123,9 @@ func GenerateJavascriptBundles(webauthnEnabled bool) error {
 		"app": {
 			"js/touch_handler.js",
 			"js/keyboard_handler.js",
+			"js/stream_handler.js",
+			"js/install_handler.js",
+			"js/reminder_handler.js",
 			"js/app.js",
 		},
 		"service-worker": {

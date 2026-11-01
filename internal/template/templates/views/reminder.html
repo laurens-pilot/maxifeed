@@ -1,0 +1,44 @@
+{{ define "title"}}{{ t "page.reminder.title" }}{{ end }}
+
+{{ define "page_header"}}
+<section class="page-header" aria-labelledby="page-header-title">
+    <h1 id="page-header-title">{{ t "page.reminder.title" }}</h1>
+    {{ template "settings_menu" dict "user" .user }}
+</section>
+{{ end }}
+
+{{ define "content"}}
+<section
+    class="reminder panel"
+    data-public-key="{{ .publicKey }}"
+    data-save-url="{{ routePath "/reminder" }}"
+    data-device-url="{{ routePath "/reminder/device" }}"
+    data-remove-url="{{ routePath "/reminder/device/remove" }}"
+    data-test-url="{{ routePath "/reminder/test" }}"
+    data-label-saved="{{ t "page.reminder.toast.saved" }}"
+    data-label-test-sent="{{ t "page.reminder.toast.test_sent" }}"
+    data-label-off="{{ t "page.reminder.toast.off" }}"
+    data-label-error="{{ t "page.reminder.toast.error" }}"
+>
+    <p>{{ t "page.reminder.description" }}</p>
+
+    <div class="reminder-form" data-reminder-panel="install" hidden>
+        <p>{{ t "page.reminder.install" }}</p>
+        <button class="finish-button" type="button" data-install hidden>{{ t "menu.install" }}</button>
+    </div>
+    <p data-reminder-panel="unsupported" hidden>{{ t "page.reminder.unsupported" }}</p>
+    <p data-reminder-panel="blocked" hidden>{{ t "page.reminder.blocked" }}</p>
+
+    <div class="reminder-form" data-reminder-panel="form" hidden>
+        <label class="reminder-time">
+            {{ t "page.reminder.time" }}
+            <input type="time" value="{{ .reminderTime }}" required data-reminder-time>
+        </label>
+        <div class="reminder-actions">
+            <button class="finish-button" type="button" data-reminder-enable>{{ t "page.reminder.enable" }}</button>
+            <button class="finish-button" type="button" data-reminder-test hidden>{{ t "page.reminder.test" }}</button>
+            <button class="finish-button finish-button-quiet" type="button" data-reminder-disable hidden>{{ t "page.reminder.disable" }}</button>
+        </div>
+    </div>
+</section>
+{{ end }}

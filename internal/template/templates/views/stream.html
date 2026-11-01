@@ -1,0 +1,130 @@
+{{ define "title"}}{{ t "menu.home" }}{{ end }}
+
+{{ define "page_header"}}
+<header class="stream-header">
+    <a class="wordmark" href="{{ routePath "/stream" }}" aria-label="{{ t "menu.home" }}">maxi<span>feed</span></a>
+    <div class="stream-header-stats">
+        {{ if .cards }}
+        <span class="stream-count"><span class="stream-count-done">0</span> / {{ len .cards }}</span>
+        {{ end }}
+        <span class="streak" title="{{ t "stream.stats.streak" }}" data-next-streak="{{ .stats.NextStreak }}" {{ if eq .stats.Streak 0 }}hidden{{ end }}>{{ icon "flame" }}<span class="streak-count">{{ .stats.Streak }}</span></span>
+    </div>
+    {{ if .cards }}
+    <div class="stream-progress" aria-hidden="true"><div class="stream-progress-fill"></div></div>
+    {{ end }}
+</header>
+{{ end }}
+
+{{ define "content"}}
+<aside class="install-card" hidden>
+    <div class="install-card-text">
+        <strong>{{ t "install.card.title" }}</strong>
+        <span>{{ t "install.card.body" }}</span>
+    </div>
+    <div class="install-card-actions">
+        <button class="install-card-button" type="button" data-install>{{ t "install.card.action" }}</button>
+        <button class="install-card-dismiss" type="button" data-install-dismiss>{{ t "install.card.dismiss" }}</button>
+    </div>
+</aside>
+
+{{ if .cards }}
+<div
+    class="stream"
+    data-auto-read="true"
+    data-read-url="{{ routePath "/stream/read" }}"
+    data-push-device-url="{{ routePath "/reminder/device" }}"
+    data-label-copied="{{ t "stream.toast.link_copied" }}"
+>
+    <p class="stream-hint" hidden>{{ t "stream.hint" }}</p>
+    {{ range .cards }}
+    {{ template "stream_card" dict "card" . "user" $.user "route" "/unread/entry/%d" }}
+    {{ end }}
+</div>
+{{ end }}
+
+<section class="finish{{ if not .cards }} finish-empty{{ end }}">
+    {{ if gt .remaining 0 }}
+    <p class="finish-mark" aria-hidden="true">✨</p>
+    <h2>{{ t "stream.finish.title" }}</h2>
+    <p>{{ t "stream.finish.body" .remaining }}</p>
+    <div class="finish-actions">
+        <a class="finish-button" href="{{ routePath "/stream" }}" data-stream-next>{{ t "stream.finish.keep_going" }}</a>
+        <div class="finish-clear">
+            <button
+                class="finish-button finish-button-quiet"
+                type="button"
+                data-confirm="true"
+                data-url="{{ routePath "/stream/clear?before=%d" .loadedAt }}"
+                data-redirect-url="{{ routePath "/stream" }}"
+                data-label-question="{{ t "confirm.question" }}"
+                data-label-yes="{{ t "confirm.yes" }}"
+                data-label-no="{{ t "confirm.no" }}"
+                data-label-loading="{{ t "confirm.loading" }}">{{ t "stream.finish.clear" }}</button>
+        </div>
+    </div>
+    {{ else }}
+    <p class="finish-mark" aria-hidden="true">🎉</p>
+    <h2>{{ t "stream.caught_up.title" }}</h2>
+    <p>{{ t "stream.caught_up.body" }}</p>
+    <div class="finish-actions">
+        <button class="finish-button finish-button-quiet" type="button" data-check-feeds data-label-checking="{{ t "stream.toast.checking" }}">{{ t "stream.caught_up.check" }}</button>
+    </div>
+    {{ end }}
+    <ul class="finish-stats">
+        {{ if or .cards (gt .stats.Streak 0) }}
+        <li>{{ t "stream.stats.streak" }} <strong class="streak-count">{{ .stats.Streak }}</strong></li>
+        {{ end }}
+        {{ if or .cards (gt .stats.ReadToday 0) }}
+        <li>{{ t "stream.stats.read_today" }} <strong class="read-today-count">{{ .stats.ReadToday }}</strong></li>
+        {{ end }}
+        {{ if gt .countSaved 0 }}
+        <li><a href="{{ routePath "/starred" }}">{{ t "stream.stats.saved" }} <strong>{{ .countSaved }}</strong></a></li>
+        {{ end }}
+    </ul>
+    {{ if not .hasReminder }}
+    <a class="finish-nudge" href="{{ routePath "/reminder" }}">{{ t "stream.finish.reminder" }}</a>
+    {{ end }}
+</section>
+
+{{ if .cards }}
+{{ template "stream_reader" . }}
+{{ end }}
+{{ end }}
+
+{{ define "reader_content" }}
+<article class="reader-article" dir="auto" {{ with or .entry.Language .entry.Feed.Language }}lang="{{ . }}"{{ end }}>
+    <header class="reader-header">
+        <p class="reader-source">{{ .entry.Feed.Title }}</p>
+        <h1 id="reader-title">{{ .entry.Title }}</h1>
+        <p class="reader-meta">
+            {{ if .entry.Author }}<span>{{ .entry.Author }}</span>{{ end }}
+            <time datetime="{{ isodate .entry.Date }}">{{ elapsed .user.Timezone .entry.Date }}</time>
+            {{ if and .user.ShowReadingTime (gt .entry.ReadingTime 0) }}
+            <span>{{ plural "entry.estimated_reading_time" .entry.ReadingTime .entry.ReadingTime }}</span>
+            {{ end }}
+        </p>
+    </header>
+    <div class="entry-content">
+        {{ if not .entry.Feed.NoMediaPlayer }}
+        {{ with .entry.Enclosures.FindMediaPlayerEnclosure }}
+        {{ if .IsAudio }}
+        <audio controls preload="metadata" src="{{ if mustBeProxyfied "audio" }}{{ proxyURL .URL }}{{ else }}{{ .URL | untrustedURL }}{{ end }}"></audio>
+        {{ else }}
+        <video controls preload="metadata" src="{{ if mustBeProxyfied "video" }}{{ proxyURL .URL }}{{ else }}{{ .URL | untrustedURL }}{{ end }}"></video>
+        {{ end }}
+        {{ end }}
+        {{ end }}
+        {{ safeHTML (proxyFilter .entry.Content) }}
+    </div>
+    <footer class="reader-footer">
+        <button class="finish-button finish-button-quiet" type="button" data-reader-full data-url="{{ routePath "/entry/download/%d" .entry.ID }}">{{ t "stream.action.full_article" }}</button>
+        {{ if .entry.CommentsURL }}
+        <a class="finish-button finish-button-quiet" href="{{ .entry.CommentsURL | untrustedURL }}" {{ if .user.OpenExternalLinksInNewTab }}target="_blank"{{ else }}rel="noopener"{{ end }}>{{ t "stream.action.comments" }}</a>
+        {{ end }}
+        {{ if .hasSaveEntry }}
+        <button class="finish-button finish-button-quiet" type="button" data-reader-send data-url="{{ routePath "/entry/save/%d" .entry.ID }}" data-label-done="{{ t "stream.toast.sent" }}">{{ t "stream.action.send" }}</button>
+        {{ end }}
+        <a class="finish-button finish-button-quiet" href="{{ routePath "/unread/entry/%d" .entry.ID }}">{{ t "stream.action.all_options" }}</a>
+    </footer>
+</article>
+{{ end }}

@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"miniflux.app/v2/internal/crypto"
+	"miniflux.app/v2/internal/webpush"
 )
 
 var schemaVersion = len(migrations)
@@ -1588,6 +1589,57 @@ var migrations = [...]func(tx *sql.Tx) error{
 				ADD COLUMN gotify_priority int default 0;
 		`
 		_, err = tx.Exec(sql)
+		return err
+	},
+	func(tx *sql.Tx) (err error) {
+		sql := `
+			CREATE TABLE reading_days (
+				user_id bigint not null references users(id) on delete cascade,
+				day date not null,
+				read_count int not null default 0,
+				primary key (user_id, day)
+			);
+
+			ALTER TABLE users ALTER COLUMN default_home_page SET DEFAULT 'stream';
+			UPDATE users SET default_home_page='stream' WHERE default_home_page='unread';
+		`
+		_, err = tx.Exec(sql)
+		return err
+	},
+	func(tx *sql.Tx) (err error) {
+		sql := `
+			CREATE TABLE vapid_keys (
+				singleton boolean primary key default true check (singleton),
+				private_key bytea not null
+			);
+
+			CREATE TABLE reminders (
+				user_id bigint primary key references users(id) on delete cascade,
+				remind_at time not null,
+				timezone text not null,
+				last_sent_on date not null
+			);
+
+			CREATE TABLE push_subscriptions (
+				endpoint text primary key,
+				user_id bigint not null references users(id) on delete cascade,
+				p256dh text not null,
+				auth text not null,
+				created_at timestamptz not null default now()
+			);
+
+			CREATE INDEX push_subscriptions_user_id_idx ON push_subscriptions(user_id);
+		`
+		if _, err = tx.Exec(sql); err != nil {
+			return err
+		}
+
+		privateKey, err := webpush.GenerateKey()
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.Exec(`INSERT INTO vapid_keys (private_key) VALUES ($1)`, privateKey)
 		return err
 	},
 }

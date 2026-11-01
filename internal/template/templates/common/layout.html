@@ -3,9 +3,9 @@
 <html lang="{{ replace .language "_" "-"}}">
 <head>
     <meta charset="utf-8">
-    <title>{{template "title" .}} - Miniflux</title>
+    <title>{{template "title" .}} - MaxiFeed</title>
 
-    <meta name="apple-mobile-web-app-title" content="Miniflux">
+    <meta name="apple-mobile-web-app-title" content="MaxiFeed">
     <meta name="googlebot" content="notranslate">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="referrer" content="no-referrer">
@@ -33,7 +33,7 @@
     {{ end -}}
 </head>
 <body
-    data-service-worker-url="{{ routePath "/js/%s/%s.js" .sw_js_checksum "service-worker" }}"
+    data-service-worker-url="{{ routePath "/service-worker.js" }}"
     {{ if .csrf }}data-csrf-token="{{ .csrf }}"{{ end }}
     data-add-subscription-url="{{ routePath "/subscribe" }}"
     data-entries-status-url="{{ routePath "/entry/status" }}"
@@ -56,23 +56,16 @@
         <nav>
             <div class="logo" data-toggle-button-label="{{ t "menu.title" }}">
                 <a aria-label="{{ t "menu.home_page" }}" href="{{ routePath (printf "/%s" .user.DefaultHomePage) }}">
-                    Mini<span>flux</span>
+                    Maxi<span>Feed</span>
                 </a>
                 {{ icon "chevron-down"}}
             </div>
             <ul id="header-menu">
+                <li {{ if eq .menu "stream" }}class="active"{{ end }}>
+                    <a href="{{ routePath "/stream" }}" data-page="stream">{{ icon "home" }}{{ t "menu.home" }}</a>
+                </li>
                 <li {{ if eq .menu "unread" }}class="active"{{ end }} title="{{ t "tooltip.keyboard_shortcuts" "g u" }}">
-                    <a href="{{ routePath "/unread" }}"
-                        data-page="unread"
-                        {{ if gt .countUnread 0 }}
-                        aria-label="{{ t "menu.unread" }}, {{ plural "page.unread_entry_count" .countUnread .countUnread }}"
-                        {{ end }}
-                    >
-                        {{ icon "entries" }}{{ t "menu.unread" }}
-                        {{ if gt .countUnread 0 }}
-                        <span class="unread-counter-wrapper" aria-hidden="true">(<span class="unread-counter">{{ .countUnread }}</span>)</span>
-                        {{ end }}
-                    </a>
+                    <a href="{{ routePath "/unread" }}" data-page="unread">{{ icon "entries" }}{{ t "menu.unread" }}</a>
                 </li>
                 <li {{ if eq .menu "starred" }}class="active"{{ end }} title="{{ t "tooltip.keyboard_shortcuts" "g b" }}">
                     <a href="{{ routePath "/starred" }}" data-page="starred">{{ icon "star" }}{{ t "menu.starred" }}</a>
@@ -123,6 +116,37 @@
     <main id="main">
         {{template "content" .}}
     </main>
+    {{ if .user }}
+    <nav class="tab-bar" aria-label="{{ t "menu.title" }}">
+        <a class="tab" href="{{ routePath "/stream" }}" {{ if eq .menu "stream" }}aria-current="page"{{ end }}>{{ icon "home" }}<span>{{ t "menu.home" }}</span></a>
+        <a class="tab" href="{{ routePath "/starred" }}" {{ if eq .menu "starred" }}aria-current="page"{{ end }}>{{ icon "bookmark" }}<span>{{ t "menu.starred" }}</span></a>
+        <a class="tab" href="{{ routePath "/search" }}" {{ if eq .menu "search" }}aria-current="page"{{ end }}>{{ icon "search" }}<span>{{ t "menu.search" }}</span></a>
+        <a class="tab" href="{{ routePath "/feeds" }}" {{ if eq .menu "feeds" }}aria-current="page"{{ end }}>{{ icon "feeds" }}<span>{{ t "menu.feeds" }}</span></a>
+        <button class="tab" type="button" popovertarget="more-sheet">{{ icon "dots" }}<span>{{ t "menu.more" }}</span></button>
+    </nav>
+    <div id="more-sheet" class="more-sheet" popover>
+        <a href="{{ routePath "/unread" }}">{{ icon "entries" }}{{ t "menu.unread" }}</a>
+        <a href="{{ routePath "/history" }}">{{ icon "history" }}{{ t "menu.history" }}</a>
+        <a href="{{ routePath "/categories" }}">{{ icon "categories" }}{{ t "menu.categories" }}</a>
+        <a href="{{ routePath "/reminder" }}">{{ icon "bell" }}{{ t "menu.reminder" }}</a>
+        <a href="{{ routePath "/settings" }}">{{ icon "settings" }}{{ t "menu.settings" }}</a>
+        <button type="button" data-install hidden>{{ icon "home" }}{{ t "menu.install" }}</button>
+        {{ if not hasAuthProxy }}
+        <form action="{{ routePath "/logout" }}" method="post">
+            <input type="hidden" name="csrf" value="{{ .csrf }}">
+            <button type="submit">{{ icon "logout" }}{{ t "menu.logout" }}</button>
+        </form>
+        {{ end }}
+    </div>
+    <div id="install-sheet" class="more-sheet install-sheet" popover>
+        <h2>{{ t "install.sheet.title" }}</h2>
+        <ol>
+            <li>{{ t "install.sheet.step_share" }}</li>
+            <li>{{ t "install.sheet.step_add" }}</li>
+            <li>{{ t "install.sheet.step_open" }}</li>
+        </ol>
+    </div>
+    {{ end }}
     <dialog id="keyboard-shortcuts-modal" closedby="any">
         <form method="dialog">
             <button class="btn-close-modal" aria-label="Close" autofocus>x</button>

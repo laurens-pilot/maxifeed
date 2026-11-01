@@ -22,14 +22,14 @@ func Themes() map[string]string {
 func ThemeColor(theme, colorScheme string) string {
 	switch theme {
 	case "dark_serif", "dark_sans_serif":
-		return "#222"
+		return "#12100e"
 	case "system_serif", "system_sans_serif":
 		if colorScheme == "dark" {
-			return "#222"
+			return "#12100e"
 		}
 
-		return "#fff"
+		return "#f5f0e6"
 	default:
-		return "#fff"
+		return "#f5f0e6"
 	}
 }

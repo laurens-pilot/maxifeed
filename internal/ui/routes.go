@@ -15,7 +15,7 @@ func isStaticAssetRoute(r *http.Request) bool {
 	path := r.URL.Path
 
 	switch path {
-	case "/favicon.ico", "/robots.txt":
+	case "/favicon.ico", "/robots.txt", "/service-worker.js":
 		return true
 	}
 

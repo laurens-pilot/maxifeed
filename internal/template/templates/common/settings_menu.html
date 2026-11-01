@@ -10,6 +10,9 @@
         </li>
         {{ end }}
         <li>
+            <a href="{{ routePath "/reminder" }}">{{ icon "bell" }}{{ t "menu.reminder" }}</a>
+        </li>
+        <li>
             <a href="{{ routePath "/integrations" }}">{{ icon "third-party-services" }}{{ t "menu.integrations" }}</a>
         </li>
         {{ if apiEnabled }}

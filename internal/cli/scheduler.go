@@ -8,9 +8,12 @@ import (
 	"time"
 
 	"miniflux.app/v2/internal/config"
+	"miniflux.app/v2/internal/reminder"
 	"miniflux.app/v2/internal/storage"
 	"miniflux.app/v2/internal/worker"
 )
+
+const reminderCheckFrequency = time.Minute
 
 func runScheduler(store *storage.Storage, pool *worker.Pool) {
 	slog.Debug(`Starting background scheduler...`)
@@ -28,6 +31,8 @@ func runScheduler(store *storage.Storage, pool *worker.Pool) {
 		store,
 		config.Opts.CleanupFrequency(),
 	)
+
+	go reminderScheduler(store, reminderCheckFrequency)
 }
 
 func feedScheduler(store *storage.Storage, pool *worker.Pool, frequency time.Duration, batchSize, errorLimit, limitPerHost int) {
@@ -53,5 +58,11 @@ func feedScheduler(store *storage.Storage, pool *worker.Pool, frequency time.Dur
 func cleanupScheduler(store *storage.Storage, frequency time.Duration) {
 	for range time.Tick(frequency) {
 		runCleanupTasks(store)
+	}
+}
+
+func reminderScheduler(store *storage.Storage, frequency time.Duration) {
+	for range time.Tick(frequency) {
+		reminder.SendDue(store)
 	}
 }

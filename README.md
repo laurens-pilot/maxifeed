@@ -1,10 +1,40 @@
-Miniflux 2
-==========
+MaxiFeed
+========
 
-Miniflux is a minimalist and opinionated feed reader.
-It's simple, fast, lightweight and super easy to install.
+MaxiFeed is a personal fork of [Miniflux](https://miniflux.app) that turns it into a fun, mobile-first news feed.
+Instead of a growing unread list, you get a short batch of posts to scroll through.
 
-Official website: <https://miniflux.app>
+- **Scroll to clear:** a post is marked as read once it scrolls off the top of the screen.
+- **Save for later:** swipe a card right (or tap the bookmark) to keep it unread in your Saved list. Swipe left to skip it.
+- **Batches, not backlogs:** each session is 25 posts with a clear finish line, then keep going or clear the rest.
+- **Fair by default:** feeds take turns, so one busy feed can't bury a quiet one.
+- **Streaks:** a daily reading streak gives you a reason to come back.
+- **Daily reminder:** pick a time and get a notification on your phone when posts are waiting.
+- **Made for phones:** install it to your home screen. Articles open in a slide-up reader and keep your place in the feed.
+
+The original list views are still available from the More menu, and all the Miniflux features below still work.
+
+Deploying
+---------
+
+MaxiFeed is one static binary, so it takes the place of the Miniflux binary in an existing systemd service.
+With Go installed on your own machine, run this from a checkout, using any host or alias that `ssh` accepts:
+
+```bash
+scripts/deploy.sh vps
+```
+
+The script builds for the server's architecture, uploads the binary, swaps it in and restarts the service.
+If the new version doesn't start, it restores the previous one, which it keeps next to the binary with a `.previous` suffix.
+The service is assumed to be called `miniflux`. For another name, pass it as a second argument.
+
+To only build the binary, for `amd64` or `arm64`:
+
+```bash
+scripts/build-binary.sh amd64
+```
+
+The service needs `RUN_MIGRATIONS=1` so that database updates apply on start. Notifications need HTTPS.
 
 Features
 --------

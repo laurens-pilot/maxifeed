@@ -18,7 +18,14 @@ const licensePrefix = "//@license magnet:?xt=urn:btih:8e4f440f4c65981c5bf93c76d3
 const licenseSuffix = "\n//@license-end"
 
 func (h *handler) showJavascript(w http.ResponseWriter, r *http.Request) {
-	filename := r.PathValue("filename")
+	h.serveJavascript(w, r, r.PathValue("filename"))
+}
+
+func (h *handler) showServiceWorker(w http.ResponseWriter, r *http.Request) {
+	h.serveJavascript(w, r, "service-worker.js")
+}
+
+func (h *handler) serveJavascript(w http.ResponseWriter, r *http.Request, filename string) {
 	javascriptBundle, found := static.JavascriptBundles[filename]
 	if !found {
 		response.HTMLNotFound(w, r)
@@ -29,7 +36,7 @@ func (h *handler) showJavascript(w http.ResponseWriter, r *http.Request) {
 		contents := javascriptBundle.Data
 
 		if filename == "service-worker.js" {
-			variables := fmt.Sprintf(`const OFFLINE_URL=%q;`, h.routePath("/offline"))
+			variables := fmt.Sprintf(`const OFFLINE_URL=%q;const HOME_URL=%q;const ICON_URL=%q;`, h.routePath("/offline"), h.routePath("/stream"), h.iconPath("icon-192.png"))
 			contents = append([]byte(variables), contents...)
 		}
 

@@ -8,6 +8,7 @@ import (
 
 	"miniflux.app/v2/internal/http/request"
 	"miniflux.app/v2/internal/http/response"
+	"miniflux.app/v2/internal/ui/stream"
 	"miniflux.app/v2/internal/ui/view"
 )
 
@@ -22,11 +23,11 @@ func (h *handler) showStarredPage(w http.ResponseWriter, r *http.Request) {
 
 	entries, count, err := h.store.NewEntryQueryBuilder(user.ID).
 		WithStarred(true).
-		WithSorting(user.EntryOrder, user.EntryDirection).
-		WithSorting("id", user.EntryDirection).
+		WithEnclosures().
+		WithSorting("changed_at", "DESC").
+		WithSorting("id", "DESC").
 		WithOffset(offset).
 		WithLimit(user.EntriesPerPage).
-		WithoutContent().
 		GetEntriesWithCount()
 	if err != nil {
 		response.HTMLServerError(w, r, err)
@@ -35,14 +36,12 @@ func (h *handler) showStarredPage(w http.ResponseWriter, r *http.Request) {
 
 	view := view.New(h.tpl, r)
 	view.Set("total", count)
-	view.Set("entries", entries)
+	view.Set("cards", stream.NewCards(entries))
 	view.Set("pagination", getPagination(h.routePath("/starred"), count, offset, user.EntriesPerPage))
 	view.Set("menu", "starred")
 	view.Set("user", user)
 	navMetadata, _ := h.store.GetNavMetadata(user.ID)
-	view.Set("countUnread", navMetadata.CountUnread)
 	view.Set("countErrorFeeds", navMetadata.CountErrorFeeds)
-	view.Set("hasSaveEntry", navMetadata.HasSaveEntry)
 
 	response.HTML(w, r, view.Render("starred_entries"))
 }

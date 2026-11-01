@@ -6,6 +6,7 @@ package model // import "miniflux.app/v2/internal/model"
 // HomePages returns the list of available home pages.
 func HomePages() map[string]string {
 	return map[string]string{
+		"stream":     "menu.home",
 		"unread":     "menu.unread",
 		"starred":    "menu.starred",
 		"history":    "menu.history",

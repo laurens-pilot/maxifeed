@@ -7,7 +7,36 @@ import (
 	"bytes"
 	"sync"
 	"testing"
+
+	"miniflux.app/v2/internal/config"
+	"miniflux.app/v2/internal/model"
 )
+
+func TestRenderFragmentOmitsThePageLayout(t *testing.T) {
+	config.Opts = config.NewConfigOptions()
+
+	engine := NewEngine("")
+	engine.ParseTemplates()
+
+	output := engine.RenderFragment("stream.html", "reader_content", map[string]any{
+		"language": "en_US",
+		"user":     &model.User{Timezone: "UTC"},
+		"entry": &model.Entry{
+			Title:   "An article title",
+			Content: "<p>The article body</p>",
+			Feed:    &model.Feed{Title: "A feed"},
+		},
+	})
+
+	for _, expected := range []string{"An article title", "<p>The article body</p>", "A feed"} {
+		if !bytes.Contains(output, []byte(expected)) {
+			t.Errorf(`Expected the fragment to contain %q, got %s`, expected, output)
+		}
+	}
+	if bytes.Contains(output, []byte("<html")) {
+		t.Errorf(`Expected no page layout in the fragment, got %s`, output)
+	}
+}
 
 // TestRenderConcurrency renders the same template concurrently in different
 // languages. Because Render binds per-request, language-specific functions

@@ -1,0 +1,64 @@
+{{ define "stream_card" }}
+{{ $entry := .card.Entry }}
+<article
+    class="card hue-{{ .card.Hue }}"
+    data-id="{{ $entry.ID }}"
+    data-status="{{ $entry.Status }}"
+    data-starred="{{ $entry.Starred }}"
+    data-title="{{ $entry.Title }}"
+    data-link="{{ $entry.URL | untrustedURL }}"
+    data-reader-url="{{ routePath "/stream/entry/%d" $entry.ID }}"
+    data-star-url="{{ routePath "/entry/star/%d" $entry.ID }}"
+    aria-labelledby="card-title-{{ $entry.ID }}"
+>
+    <div class="card-under" aria-hidden="true">
+        <span class="card-under-save">{{ icon "bookmark" }}</span>
+        <span class="card-under-skip">{{ icon "read" }}</span>
+    </div>
+    <div class="card-face">
+        <header class="card-source" dir="auto">
+            <a class="card-source-link" href="{{ routePath "/feed/%d/entries" $entry.Feed.ID }}">
+                {{ if ne $entry.Feed.Icon.IconID 0 }}
+                <img class="avatar" src="{{ routePath "/feed-icon/%s" $entry.Feed.Icon.ExternalIconID }}" width="30" height="30" loading="lazy" alt="">
+                {{ else }}
+                <span class="avatar avatar-letter" aria-hidden="true">{{ .card.Initial }}</span>
+                {{ end }}
+                <span class="card-source-name">{{ $entry.Feed.Title }}</span>
+            </a>
+            <time class="card-time" datetime="{{ isodate $entry.Date }}" title="{{ isodate $entry.Date }}">{{ elapsed .user.Timezone $entry.Date }}</time>
+        </header>
+        {{ if .card.ImageURL }}
+        <img class="card-image" src="{{ if mustBeProxyfied "image" }}{{ proxyURL .card.ImageURL }}{{ else }}{{ .card.ImageURL | untrustedURL }}{{ end }}" loading="lazy" decoding="async" alt="">
+        {{ end }}
+        <div class="card-text" dir="auto" {{ with or $entry.Language $entry.Feed.Language }}lang="{{ . }}"{{ end }}>
+            <h2 class="card-title" id="card-title-{{ $entry.ID }}">
+                <a href="{{ routePath .route $entry.ID }}" data-open-reader>{{ $entry.Title }}</a>
+            </h2>
+            {{ if .card.Excerpt }}
+            <p class="card-excerpt">{{ .card.Excerpt }}</p>
+            {{ end }}
+        </div>
+        <footer class="card-actions">
+            <button class="card-action card-save" type="button" data-card-save aria-pressed="{{ $entry.Starred }}" aria-label="{{ t "stream.action.save" }}">{{ icon "bookmark" }}</button>
+            <a class="card-action" href="{{ $entry.URL | untrustedURL }}" {{ if .user.OpenExternalLinksInNewTab }}target="_blank"{{ else }}rel="noopener"{{ end }} aria-label="{{ t "stream.action.open_original" }}">{{ icon "external-link" }}</a>
+            <button class="card-action" type="button" data-card-share aria-label="{{ t "stream.action.share" }}">{{ icon "share" }}</button>
+            {{ if and .user.ShowReadingTime (gt $entry.ReadingTime 0) }}
+            <span class="card-reading-time">{{ plural "entry.estimated_reading_time" $entry.ReadingTime $entry.ReadingTime }}</span>
+            {{ end }}
+            <button class="card-action card-skip" type="button" data-card-skip aria-label="{{ t "stream.action.skip" }}">{{ icon "read" }}</button>
+        </footer>
+    </div>
+</article>
+{{ end }}
+
+{{ define "stream_reader" }}
+<dialog id="reader" class="reader" aria-labelledby="reader-title">
+    <div class="reader-bar">
+        <button class="reader-button" type="button" data-reader-close aria-label="{{ t "stream.action.close" }}">{{ icon "chevron-down" }}</button>
+        <span class="reader-grabber" aria-hidden="true"></span>
+        <button class="reader-button reader-save" type="button" data-reader-save aria-pressed="false" aria-label="{{ t "stream.action.save" }}">{{ icon "bookmark" }}</button>
+        <a class="reader-button" data-reader-original {{ if .user.OpenExternalLinksInNewTab }}target="_blank"{{ else }}rel="noopener"{{ end }} aria-label="{{ t "stream.action.open_original" }}">{{ icon "external-link" }}</a>
+    </div>
+    <div class="reader-body" tabindex="-1" autofocus></div>
+</dialog>
+{{ end }}

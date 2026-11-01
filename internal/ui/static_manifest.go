@@ -39,14 +39,17 @@ func (h *handler) showWebManifest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type webManifest struct {
+		ID              string                 `json:"id"`
 		Name            string                 `json:"name"`
 		Description     string                 `json:"description"`
 		ShortName       string                 `json:"short_name"`
 		StartURL        string                 `json:"start_url"`
+		Scope           string                 `json:"scope"`
 		Icons           []webManifestIcon      `json:"icons"`
 		ShareTarget     webManifestShareTarget `json:"share_target"`
 		Display         string                 `json:"display"`
 		BackgroundColor string                 `json:"background_color"`
+		ThemeColor      string                 `json:"theme_color"`
 		Shortcuts       []webManifestShortcut  `json:"shortcuts"`
 	}
 
@@ -78,12 +81,15 @@ func (h *handler) showWebManifest(w http.ResponseWriter, r *http.Request) {
 	}
 	themeColor := model.ThemeColor(request.WebSession(r).Theme(), "light")
 	manifest := &webManifest{
-		Name:            "Miniflux",
-		ShortName:       "Miniflux",
-		Description:     "Minimalist Feed Reader",
+		ID:              h.routePath("/"),
+		Name:            "MaxiFeed",
+		ShortName:       "MaxiFeed",
+		Description:     "A fun feed for your RSS subscriptions",
 		Display:         displayMode,
 		StartURL:        h.routePath("/"),
+		Scope:           h.routePath("/"),
 		BackgroundColor: themeColor,
+		ThemeColor:      themeColor,
 		Icons: []webManifestIcon{
 			{Source: h.iconPath("icon-120.png"), Sizes: "120x120", Type: "image/png", Purpose: "any"},
 			{Source: h.iconPath("icon-192.png"), Sizes: "192x192", Type: "image/png", Purpose: "any"},

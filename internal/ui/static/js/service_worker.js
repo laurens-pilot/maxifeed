@@ -20,6 +20,38 @@ self.addEventListener("install", (event) => {
     self.skipWaiting();
 });
 
+self.addEventListener("activate", (event) => {
+    event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener("push", (event) => {
+    const { title, body } = event.data.json();
+
+    event.waitUntil(
+        self.registration.showNotification(title, {
+            body,
+            icon: ICON_URL,
+            tag: "daily-reminder",
+        })
+    );
+});
+
+self.addEventListener("notificationclick", (event) => {
+    event.notification.close();
+
+    event.waitUntil(
+        (async () => {
+            const [openWindow] = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+            if (!openWindow) {
+                return self.clients.openWindow(HOME_URL);
+            }
+
+            await openWindow.focus();
+            return openWindow.navigate(HOME_URL).catch(() => {});
+        })()
+    );
+});
+
 self.addEventListener("fetch", (event) => {
     // We proxify requests through fetch() only if we are offline because it's slower.
     if (navigator.onLine === false && event.request.mode === "navigate") {

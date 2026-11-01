@@ -33,12 +33,26 @@ func Serve(store *storage.Storage, pool *worker.Pool) http.Handler {
 	mux.HandleFunc("GET /icon/{checksum}/{filename}", handler.showAppIcon)
 	mux.HandleFunc("GET /favicon.ico", handler.showFavicon)
 	mux.HandleFunc("GET /manifest.json", handler.showWebManifest)
+	mux.HandleFunc("GET /service-worker.js", handler.showServiceWorker)
 
 	// New subscription pages.
 	mux.HandleFunc("GET /subscribe", handler.showAddSubscriptionPage)
 	mux.HandleFunc("POST /subscribe", handler.submitSubscription)
 	mux.HandleFunc("POST /subscriptions", handler.showChooseSubscriptionPage)
 	mux.HandleFunc("GET /bookmarklet", handler.bookmarklet)
+
+	// Stream page.
+	mux.HandleFunc("GET /stream", handler.showStreamPage)
+	mux.HandleFunc("GET /stream/entry/{entryID}", handler.showStreamEntry)
+	mux.HandleFunc("POST /stream/read", handler.markStreamEntriesAsRead)
+	mux.HandleFunc("POST /stream/clear", handler.clearStream)
+
+	// Reminder page.
+	mux.HandleFunc("GET /reminder", handler.showReminderPage)
+	mux.HandleFunc("POST /reminder", handler.saveReminder)
+	mux.HandleFunc("POST /reminder/device", handler.syncReminderDevice)
+	mux.HandleFunc("POST /reminder/device/remove", handler.removeReminderDevice)
+	mux.HandleFunc("POST /reminder/test", handler.sendTestReminder)
 
 	// Unread page.
 	mux.HandleFunc("POST /mark-all-as-read", handler.markAllAsRead)
