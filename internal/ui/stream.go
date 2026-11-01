@@ -209,7 +209,7 @@ func (h *handler) showStreamEntry(w http.ResponseWriter, r *http.Request) {
 	view.Set("position", positions[entry.ID])
 	view.Set("hasSaveEntry", navMetadata.HasSaveEntry && len(destinations) == 0)
 
-	response.HTML(w, r, view.RenderFragment("stream", "reader_content"))
+	response.HTMLFragment(w, r, view.RenderFragment("stream", "reader_content"))
 }
 
 func (h *handler) saveReadingPosition(w http.ResponseWriter, r *http.Request) {

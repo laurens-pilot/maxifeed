@@ -29,6 +29,17 @@ func HTML[T []byte | string](w http.ResponseWriter, r *http.Request, body T) {
 	builder.Write()
 }
 
+// HTMLFragment creates a new HTML response for markup that a page fetches and inserts into itself.
+// A fragment has no layout, and therefore no CSP of its own if it is opened directly.
+func HTMLFragment(w http.ResponseWriter, r *http.Request, body []byte) {
+	NewBuilder(w, r).
+		WithHeader("Content-Security-Policy", ContentSecurityPolicyForUntrustedContent).
+		WithHeader("Content-Type", "text/html; charset=utf-8").
+		WithHeader("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store").
+		WithBodyAsBytes(body).
+		Write()
+}
+
 // HTMLServerError sends an internal error to the client.
 func HTMLServerError(w http.ResponseWriter, r *http.Request, err error) {
 	slog.Error(http.StatusText(http.StatusInternalServerError),
