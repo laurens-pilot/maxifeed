@@ -10,7 +10,7 @@ MaxiFeed turns that list into a news feed: you scroll, and it clears itself.
 - **Swipe to decide:** right to save, left to skip.
 - **Batches, not backlogs:** 25 posts at a time, with a finish line.
 - **Fair feeds:** feeds take turns, so a busy one can't bury a quiet one.
-- **Long reads in stints:** saved articles resume at your paragraph on any device, show the time left, and stay up top until you finish them.
+- **Long reads in stints:** saving fetches the full article, and saved articles resume at your paragraph on any device, show the time left, and stay up top until you finish them.
 - **Readeck and Raindrop:** send a post to either in two taps, and see whether it arrived.
 - **Daily reminder:** a notification at the time you pick, with no third-party account.
 - **Streaks:** one more reason to open it tomorrow.
