@@ -1,0 +1,7 @@
+{{ define "feed_source" }}
+{{ if .Tracked }}
+<span class="feed-source feed-source-tracked" title="{{ t "feed.source.tracked.title" }}">{{ t "feed.source.tracked" }}</span>
+{{ else }}
+<span class="feed-source" title="{{ t "feed.source.rss.title" }}">{{ t "feed.source.rss" }}</span>
+{{ end }}
+{{ end }}

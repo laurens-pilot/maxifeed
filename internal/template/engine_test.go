@@ -5,6 +5,7 @@ package template // import "miniflux.app/v2/internal/template"
 
 import (
 	"bytes"
+	"regexp"
 	"sync"
 	"testing"
 
@@ -35,6 +36,28 @@ func TestRenderFragmentOmitsThePageLayout(t *testing.T) {
 	}
 	if bytes.Contains(output, []byte("<html")) {
 		t.Errorf(`Expected no page layout in the fragment, got %s`, output)
+	}
+}
+
+func TestEveryTemplateReferenceResolves(t *testing.T) {
+	config.Opts = config.NewConfigOptions()
+
+	engine := NewEngine("")
+	engine.ParseTemplates()
+
+	reference := regexp.MustCompile(`\{\{template "([^"]+)"`)
+	for name, view := range engine.templates {
+		for _, definition := range view.Templates() {
+			if definition.Tree == nil {
+				continue
+			}
+
+			for _, match := range reference.FindAllStringSubmatch(definition.Tree.Root.String(), -1) {
+				if view.Lookup(match[1]) == nil {
+					t.Errorf("%s uses the template %q, which isn't registered for it", name, match[1])
+				}
+			}
+		}
 	}
 }
 

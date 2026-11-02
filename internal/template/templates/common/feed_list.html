@@ -15,6 +15,7 @@
                         {{ if .Disabled }} 🚫 {{ end }}
                         {{ .Title }}
                     </a>
+                    {{ template "feed_source" . }}
                 </h2>
                 <span id="feed-entries-counter-{{ .ID }}" class="feed-entries-counter">
                     <span aria-hidden="true">(</span>

@@ -77,6 +77,15 @@ func (s *Storage) UpdateEntryTitleAndContent(entry *model.Entry) error {
 	return nil
 }
 
+func (s *Storage) UpdateEntryDate(entry *model.Entry) error {
+	query := `UPDATE entries SET published_at=$1 WHERE id=$2 AND user_id=$3`
+	if _, err := s.db.Exec(query, entry.Date, entry.ID, entry.UserID); err != nil {
+		return fmt.Errorf(`store: unable to update the date of entry #%d: %v`, entry.ID, err)
+	}
+
+	return nil
+}
+
 // createEntry add a new entry.
 func (s *Storage) createEntry(tx *sql.Tx, entry *model.Entry) error {
 	truncatedTitle, truncatedContent := truncateTitleAndContentForTSVectorField(entry.Title, entry.Content)

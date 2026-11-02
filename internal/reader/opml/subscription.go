@@ -29,4 +29,5 @@ type subcription struct {
 	AllowSelfSignedCertificates bool
 	DisableHTTP2                bool
 	IgnoreEntryUpdates          bool
+	Tracked                     bool
 }

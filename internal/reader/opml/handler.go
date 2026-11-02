@@ -42,6 +42,7 @@ func (h *Handler) Export(userID int64) (string, error) {
 			KeepFilterEntryRules:        feed.KeepFilterEntryRules,
 			UserAgent:                   feed.UserAgent,
 			Crawler:                     feed.Crawler,
+			Tracked:                     feed.Tracked,
 			IgnoreHTTPCache:             feed.IgnoreHTTPCache,
 			FetchViaProxy:               feed.FetchViaProxy,
 			Disabled:                    feed.Disabled,
@@ -131,6 +132,7 @@ func applySubscriptionSettings(feed *model.Feed, s subcription) {
 	feed.KeepFilterEntryRules = s.KeepFilterEntryRules
 	feed.UserAgent = s.UserAgent
 	feed.Crawler = s.Crawler
+	feed.Tracked = s.Tracked
 	feed.IgnoreHTTPCache = s.IgnoreHTTPCache
 	feed.FetchViaProxy = s.FetchViaProxy
 	feed.Disabled = s.Disabled
@@ -147,6 +149,7 @@ func validateSubscription(userID, categoryID int64, store *storage.Storage, s su
 		CategoryID:                  categoryID,
 		UserAgent:                   s.UserAgent,
 		Crawler:                     s.Crawler,
+		Tracked:                     s.Tracked,
 		IgnoreEntryUpdates:          s.IgnoreEntryUpdates,
 		Disabled:                    s.Disabled,
 		NoMediaPlayer:               s.NoMediaPlayer,

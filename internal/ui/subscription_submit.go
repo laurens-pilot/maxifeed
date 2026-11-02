@@ -5,6 +5,7 @@ package ui // import "miniflux.app/v2/internal/ui"
 
 import (
 	"net/http"
+	"time"
 
 	"miniflux.app/v2/internal/config"
 	"miniflux.app/v2/internal/http/request"
@@ -15,6 +16,7 @@ import (
 	"miniflux.app/v2/internal/reader/fetcher"
 	feedHandler "miniflux.app/v2/internal/reader/handler"
 	"miniflux.app/v2/internal/reader/subscription"
+	"miniflux.app/v2/internal/reader/tracker"
 	"miniflux.app/v2/internal/ui/form"
 	"miniflux.app/v2/internal/ui/view"
 )
@@ -85,9 +87,21 @@ func (h *handler) submitSubscription(w http.ResponseWriter, r *http.Request) {
 	n := len(subscriptions)
 	switch {
 	case n == 0:
+		page := subscriptionFinder.Page()
+		checkedAt := time.Now()
+		trackedFeed, trackErr := tracker.Parse(page.URL, page.ContentType, page.Body)
+		if trackErr != nil {
+			v.Set("form", subscriptionForm)
+			v.Set("errorMessage", locale.NewLocalizedError("error.no_feed_and_no_posts").Translate(user.Language))
+			response.HTML(w, r, v.Render("add_subscription"))
+			return
+		}
+
+		subscriptionForm.URL = page.URL
 		v.Set("form", subscriptionForm)
-		v.Set("errorMessage", locale.NewLocalizedError("error.subscription_not_found").Translate(user.Language))
-		response.HTML(w, r, v.Render("add_subscription"))
+		v.Set("posts", trackedFeed.Entries)
+		v.Set("checkedAt", checkedAt)
+		response.HTML(w, r, v.Render("track_subscription"))
 	case n == 1 && subscriptionFinder.IsFeedAlreadyDownloaded():
 		feed, localizedError := feedHandler.CreateFeedFromSubscriptionDiscovery(h.store, user.ID, &model.FeedCreationRequestFromSubscriptionDiscovery{
 			Content:      subscriptionFinder.FeedResponseInfo().Content,
@@ -122,7 +136,7 @@ func (h *handler) submitSubscription(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		response.HTMLRedirect(w, r, h.routePath("/feed/%d/entries", feed.ID))
+		response.HTMLRedirect(w, r, h.routePath("/feed/%d/entries?added=1", feed.ID))
 	case n == 1 && !subscriptionFinder.IsFeedAlreadyDownloaded():
 		feed, localizedError := feedHandler.CreateFeed(h.store, user.ID, &model.FeedCreationRequest{
 			CategoryID:                  subscriptionForm.CategoryID,
@@ -152,7 +166,7 @@ func (h *handler) submitSubscription(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		response.HTMLRedirect(w, r, h.routePath("/feed/%d/entries", feed.ID))
+		response.HTMLRedirect(w, r, h.routePath("/feed/%d/entries?added=1", feed.ID))
 	case n > 1:
 		view := view.New(h.tpl, r)
 		view.Set("subscriptions", subscriptions)

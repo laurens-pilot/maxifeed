@@ -25,6 +25,14 @@ type subscriptionFinder struct {
 	requestBuilder   *fetcher.RequestBuilder
 	feedDownloaded   bool
 	feedResponseInfo *model.FeedCreationRequestFromSubscriptionDiscovery
+	page             Page
+}
+
+// Page is the web page that was searched for feeds.
+type Page struct {
+	URL         string
+	ContentType string
+	Body        []byte
 }
 
 func NewSubscriptionFinder(requestBuilder *fetcher.RequestBuilder) *subscriptionFinder {
@@ -39,6 +47,10 @@ func (f *subscriptionFinder) IsFeedAlreadyDownloaded() bool {
 
 func (f *subscriptionFinder) FeedResponseInfo() *model.FeedCreationRequestFromSubscriptionDiscovery {
 	return f.feedResponseInfo
+}
+
+func (f *subscriptionFinder) Page() Page {
+	return f.page
 }
 
 func (f *subscriptionFinder) FindSubscriptions(websiteURL, rssBridgeURL string, rssBridgeToken string) (Subscriptions, *locale.LocalizedErrorWrapper) {
@@ -61,6 +73,8 @@ func (f *subscriptionFinder) FindSubscriptions(websiteURL, rssBridgeURL string, 
 		ETag:         responseHandler.ETag(),
 		LastModified: responseHandler.LastModified(),
 	}
+
+	f.page = Page{URL: responseHandler.EffectiveURL(), ContentType: responseHandler.ContentType(), Body: responseBody}
 
 	// Step 1) Check if the website URL is already a feed.
 	if feedFormat, _ := parser.DetectFeedFormat(f.feedResponseInfo.Content); feedFormat != parser.FormatUnknown {
@@ -226,34 +240,13 @@ func (f *subscriptionFinder) findSubscriptionsFromWellKnownURLs(websiteURL strin
 				continue
 			}
 
-			// Some websites redirects unknown URLs to the home page.
-			// As result, the list of known URLs is returned to the subscription list.
-			// We don't want the user to choose between invalid feed URLs.
-			//
-			// Probe each known URL on its own builder so disabling redirects
-			// here doesn't leak into the finder's other requests.
-			requestBuilder := f.requestBuilder.Clone().WithoutRedirects()
-
-			responseHandler := fetcher.NewResponseHandler(requestBuilder.ExecuteRequest(fullURL))
-			localizedError := responseHandler.LocalizedError()
-			responseHandler.Close()
-
-			// Do not add redirections to the possible list of subscriptions to avoid confusion.
-			if responseHandler.IsRedirect() {
-				slog.Debug("Ignore URL redirection during feed discovery", slog.String("fullURL", fullURL))
-				continue
-			}
-
-			if localizedError != nil {
-				slog.Debug("Ignore invalid feed URL during feed discovery",
-					slog.String("fullURL", fullURL),
-					slog.Any("error", localizedError.Error()),
-				)
+			feedFormat := f.detectFeedFormatAt(fullURL)
+			if feedFormat == parser.FormatUnknown {
 				continue
 			}
 
 			subscriptions = append(subscriptions, &subscription{
-				Type:  known.format,
+				Type:  feedFormat,
 				Title: fullURL,
 				URL:   fullURL,
 			})
@@ -261,6 +254,41 @@ func (f *subscriptionFinder) findSubscriptionsFromWellKnownURLs(websiteURL strin
 	}
 
 	return subscriptions, nil
+}
+
+func (f *subscriptionFinder) detectFeedFormatAt(fullURL string) string {
+	// Some websites redirects unknown URLs to the home page.
+	// As result, the list of known URLs is returned to the subscription list.
+	// We don't want the user to choose between invalid feed URLs.
+	//
+	// Probe each known URL on its own builder so disabling redirects
+	// here doesn't leak into the finder's other requests.
+	requestBuilder := f.requestBuilder.Clone().WithoutRedirects()
+
+	responseHandler := fetcher.NewResponseHandler(requestBuilder.ExecuteRequest(fullURL))
+	defer responseHandler.Close()
+
+	// Do not add redirections to the possible list of subscriptions to avoid confusion.
+	if responseHandler.IsRedirect() {
+		slog.Debug("Ignore URL redirection during feed discovery", slog.String("fullURL", fullURL))
+		return parser.FormatUnknown
+	}
+
+	if localizedError := responseHandler.LocalizedError(); localizedError != nil {
+		slog.Debug("Ignore invalid feed URL during feed discovery",
+			slog.String("fullURL", fullURL),
+			slog.Any("error", localizedError.Error()),
+		)
+		return parser.FormatUnknown
+	}
+
+	responseBody, localizedError := responseHandler.ReadBody(config.Opts.HTTPClientMaxBodySize())
+	if localizedError != nil {
+		return parser.FormatUnknown
+	}
+
+	feedFormat, _ := parser.DetectFeedFormat(bytes.NewReader(responseBody))
+	return feedFormat
 }
 
 func (f *subscriptionFinder) findSubscriptionsFromRSSBridge(websiteURL, rssBridgeURL string, rssBridgeToken string) (Subscriptions, *locale.LocalizedErrorWrapper) {

@@ -12,6 +12,7 @@ MaxiFeed turns that list into a news feed: you scroll, and it clears itself.
 - **Fair feeds:** feeds take turns, so a busy one can't bury a quiet one.
 - **Long reads in stints:** saving fetches the full article, and saved articles resume at your paragraph on any device, show the time left, and stay up top until you finish them.
 - **Readeck and Raindrop:** send a post to either in two taps, and see whether it arrived.
+- **Sites without RSS:** paste any link. If the site has no feed, MaxiFeed tracks the page itself, and a badge shows which of your feeds are real RSS.
 - **Daily reminder:** a notification at the time you pick, with no third-party account.
 - **Streaks:** one more reason to open it tomorrow.
 - **Installable:** add it to your home screen and it opens like an app.

@@ -48,6 +48,7 @@ type Feed struct {
 	Password                    string    `json:"password"`
 	Disabled                    bool      `json:"disabled"`
 	NoMediaPlayer               bool      `json:"no_media_player"`
+	Tracked                     bool      `json:"tracked"`
 	IgnoreHTTPCache             bool      `json:"ignore_http_cache"`
 	AllowSelfSignedCertificates bool      `json:"allow_self_signed_certificates"`
 	FetchViaProxy               bool      `json:"fetch_via_proxy"`
@@ -161,6 +162,7 @@ type FeedCreationRequest struct {
 	IgnoreEntryUpdates          bool   `json:"ignore_entry_updates"`
 	Disabled                    bool   `json:"disabled"`
 	NoMediaPlayer               bool   `json:"no_media_player"`
+	Tracked                     bool   `json:"tracked"`
 	IgnoreHTTPCache             bool   `json:"ignore_http_cache"`
 	AllowSelfSignedCertificates bool   `json:"allow_self_signed_certificates"`
 	FetchViaProxy               bool   `json:"fetch_via_proxy"`

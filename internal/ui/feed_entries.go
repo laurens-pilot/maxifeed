@@ -64,6 +64,7 @@ func (h *handler) showFeedEntriesPage(w http.ResponseWriter, r *http.Request) {
 
 	view := view.New(h.tpl, r)
 	view.Set("feed", feed)
+	view.Set("justAdded", request.QueryStringParam(r, "added", "") == "1")
 	view.Set("entries", entries)
 	view.Set("total", count)
 	view.Set("pagination", getPagination(h.routePath("/feed/%d/entries", feed.ID), count, offset, user.EntriesPerPage))

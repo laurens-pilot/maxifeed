@@ -66,6 +66,7 @@ func (h *handler) showChooseSubscriptionPage(w http.ResponseWriter, r *http.Requ
 		FetchViaProxy:               subscriptionForm.FetchViaProxy,
 		DisableHTTP2:                subscriptionForm.DisableHTTP2,
 		ProxyURL:                    subscriptionForm.ProxyURL,
+		Tracked:                     subscriptionForm.Tracked,
 	})
 	if localizedError != nil {
 		view.Set("form", subscriptionForm)
@@ -74,5 +75,5 @@ func (h *handler) showChooseSubscriptionPage(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	response.HTMLRedirect(w, r, h.routePath("/feed/%d/entries", feed.ID))
+	response.HTMLRedirect(w, r, h.routePath("/feed/%d/entries?added=1", feed.ID))
 }

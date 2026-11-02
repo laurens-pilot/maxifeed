@@ -1,0 +1,34 @@
+{{ define "title"}}{{ t "page.add_feed.title" }}{{ end }}
+
+{{ define "page_header"}}
+<section class="page-header" aria-labelledby="page-header-title">
+    <h1 id="page-header-title">{{ t "page.add_feed.title" }}</h1>
+    {{ template "feed_menu" dict "csrf" .csrf }}
+</section>
+{{ end }}
+
+{{ define "content"}}
+<form class="track-page" action="{{ routePath "/subscriptions" }}" method="POST">
+    {{ template "subscription_options" . }}
+    <input type="hidden" name="url" value="{{ .form.URL }}">
+    <input type="hidden" name="tracked" value="1">
+
+    <h2>{{ t "page.add_feed.no_feed.title" }}</h2>
+    <p>{{ t "page.add_feed.no_feed.body" }} {{ t "page.add_feed.no_feed.found" }}</p>
+
+    <ul class="track-posts">
+        {{ range .posts }}
+        <li>
+            <a href="{{ .URL | untrustedURL }}" dir="auto" {{ if $.user.OpenExternalLinksInNewTab }}target="_blank"{{ else }}rel="noopener"{{ end }}>{{ .Title }}</a>
+            {{ if .Date.Before $.checkedAt }}
+            <time datetime="{{ isodate .Date }}">{{ elapsed $.user.Timezone .Date }}</time>
+            {{ end }}
+        </li>
+        {{ end }}
+    </ul>
+
+    <div class="buttons">
+        <button type="submit" class="button button-primary" data-label-loading="{{ t "form.submit.loading" }}">{{ t "page.add_feed.no_feed.track" }}</button>
+    </div>
+</form>
+{{ end }}

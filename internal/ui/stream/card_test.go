@@ -138,3 +138,14 @@ func TestSavedCardsReportProgress(t *testing.T) {
 		t.Errorf("unexpected split: %d started, %d not started", len(started), len(notStarted))
 	}
 }
+
+func TestExcerptSkipsAsides(t *testing.T) {
+	card := newCard(&model.Entry{
+		Content: `<aside><p>Related articles</p><p>View more</p></aside><p>The article starts here.</p>`,
+		Feed:    &model.Feed{Title: "A feed"},
+	})
+
+	if card.Excerpt != "The article starts here." {
+		t.Errorf("unexpected excerpt %q", card.Excerpt)
+	}
+}

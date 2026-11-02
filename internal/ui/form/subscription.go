@@ -33,6 +33,7 @@ type SubscriptionForm struct {
 	IgnoreEntryUpdates          bool
 	FetchViaProxy               bool
 	AllowSelfSignedCertificates bool
+	Tracked                     bool
 }
 
 // Validate makes sure the form values locale.are valid.
@@ -111,5 +112,6 @@ func NewSubscriptionForm(r *http.Request) *SubscriptionForm {
 		BlockFilterEntryRules:       r.FormValue("block_filter_entry_rules"),
 		DisableHTTP2:                r.FormValue("disable_http2") == "1",
 		ProxyURL:                    r.FormValue("proxy_url"),
+		Tracked:                     r.FormValue("tracked") == "1",
 	}
 }

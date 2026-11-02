@@ -48,6 +48,7 @@ func getSubscriptionsFromOutlines(outlines opmlOutlineCollection, category strin
 				KeepFilterEntryRules:        outline.KeepFilterEntryRules,
 				UserAgent:                   outline.UserAgent,
 				Crawler:                     outline.Crawler,
+				Tracked:                     outline.Tracked,
 				IgnoreHTTPCache:             outline.IgnoreHTTPCache,
 				FetchViaProxy:               outline.FetchViaProxy,
 				Disabled:                    outline.Disabled,

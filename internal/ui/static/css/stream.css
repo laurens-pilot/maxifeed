@@ -900,6 +900,56 @@ dialog.send-sheet::backdrop {
     transform: scale(0.98);
 }
 
+/* Feed source */
+.feed-source {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--line);
+    color: var(--ink-soft);
+    font-family: var(--font-rounded);
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1.5;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.feed-source-tracked {
+    background: var(--save-soft);
+    color: var(--save);
+}
+
+.track-page h2 {
+    margin-bottom: 6px;
+    border: 0;
+    font-family: var(--font-rounded);
+    font-size: 1.3rem;
+}
+
+.track-posts {
+    display: grid;
+    gap: 2px;
+    margin: 14px 0;
+    padding: 0;
+    list-style: none;
+}
+
+.track-posts li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.track-posts time {
+    flex: none;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+}
+
 /* Tab bar */
 .tab-bar {
     position: fixed;

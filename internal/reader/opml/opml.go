@@ -53,6 +53,7 @@ type opmlOutline struct {
 	AllowSelfSignedCertificates bool   `xml:"miniflux:allowSelfSignedCertificates,attr,omitempty"`
 	DisableHTTP2                bool   `xml:"miniflux:disableHTTP2,attr,omitempty"`
 	IgnoreEntryUpdates          bool   `xml:"miniflux:ignoreEntryUpdates,attr,omitempty"`
+	Tracked                     bool   `xml:"miniflux:tracked,attr,omitempty"`
 }
 
 func (o opmlOutline) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
@@ -165,6 +166,8 @@ func (o *opmlOutline) setMinifluxAttribute(name, value string) error {
 		return setMinifluxBoolAttribute(name, value, &o.DisableHTTP2)
 	case "ignoreEntryUpdates":
 		return setMinifluxBoolAttribute(name, value, &o.IgnoreEntryUpdates)
+	case "tracked":
+		return setMinifluxBoolAttribute(name, value, &o.Tracked)
 	}
 
 	return nil

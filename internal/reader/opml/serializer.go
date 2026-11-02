@@ -64,6 +64,7 @@ func convertSubscriptionsToOPML(subscriptions []subcription) *opmlDocument {
 				KeepFilterEntryRules:        subscription.KeepFilterEntryRules,
 				UserAgent:                   subscription.UserAgent,
 				Crawler:                     subscription.Crawler,
+				Tracked:                     subscription.Tracked,
 				IgnoreHTTPCache:             subscription.IgnoreHTTPCache,
 				FetchViaProxy:               subscription.FetchViaProxy,
 				Disabled:                    subscription.Disabled,

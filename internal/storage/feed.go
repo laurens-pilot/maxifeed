@@ -256,10 +256,11 @@ func (s *Storage) CreateFeed(feed *model.Feed) error {
 			description,
 			proxy_url,
 			ignore_entry_updates,
-			language
+			language,
+			tracked
 		)
 		VALUES
-			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
+			($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
 		RETURNING
 			id
 	`
@@ -297,6 +298,7 @@ func (s *Storage) CreateFeed(feed *model.Feed) error {
 		feed.ProxyURL,
 		feed.IgnoreEntryUpdates,
 		feed.Language,
+		feed.Tracked,
 	).Scan(&feed.ID)
 	if err != nil {
 		return fmt.Errorf(`store: unable to create feed %q: %v`, feed.FeedURL, err)

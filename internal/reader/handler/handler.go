@@ -18,8 +18,11 @@ import (
 	"miniflux.app/v2/internal/reader/icon"
 	"miniflux.app/v2/internal/reader/parser"
 	"miniflux.app/v2/internal/reader/processor"
+	"miniflux.app/v2/internal/reader/tracker"
 	"miniflux.app/v2/internal/storage"
 )
+
+const trackedPostFetchDelay = 500 * time.Millisecond
 
 var (
 	ErrCategoryNotFound = errors.New("fetcher: category not found")
@@ -112,6 +115,8 @@ func CreateFeed(store *storage.Storage, userID int64, feedCreationRequest *model
 		slog.String("proxy_url", feedCreationRequest.ProxyURL),
 	)
 
+	startedAt := time.Now()
+
 	categoryExists, storeErr := store.CategoryIDExists(userID, feedCreationRequest.CategoryID)
 	if storeErr != nil {
 		return nil, locale.NewLocalizedErrorWrapper(storeErr, "error.database_error", storeErr)
@@ -150,9 +155,9 @@ func CreateFeed(store *storage.Storage, userID int64, feedCreationRequest *model
 		return nil, locale.NewLocalizedErrorWrapper(ErrDuplicatedFeed, "error.duplicated_feed")
 	}
 
-	subscription, parseErr := parser.ParseFeed(responseHandler.EffectiveURL(), bytes.NewReader(responseBody))
+	subscription, parseErr := parseFeed(feedCreationRequest.Tracked, responseHandler.EffectiveURL(), responseHandler.ContentType(), responseBody)
 	if parseErr != nil {
-		return nil, locale.NewLocalizedErrorWrapper(parseErr, "error.unable_to_parse_feed", parseErr)
+		return nil, parseFeedError(parseErr)
 	}
 
 	subscription.UserID = userID
@@ -160,7 +165,8 @@ func CreateFeed(store *storage.Storage, userID int64, feedCreationRequest *model
 	subscription.Cookie = feedCreationRequest.Cookie
 	subscription.Username = feedCreationRequest.Username
 	subscription.Password = feedCreationRequest.Password
-	subscription.Crawler = feedCreationRequest.Crawler
+	subscription.Crawler = feedCreationRequest.Crawler && !feedCreationRequest.Tracked
+	subscription.Tracked = feedCreationRequest.Tracked
 	subscription.IgnoreEntryUpdates = feedCreationRequest.IgnoreEntryUpdates
 	subscription.Disabled = feedCreationRequest.Disabled
 	subscription.IgnoreHTTPCache = feedCreationRequest.IgnoreHTTPCache
@@ -185,6 +191,8 @@ func CreateFeed(store *storage.Storage, userID int64, feedCreationRequest *model
 
 	processor.ProcessFeedEntries(store, subscription, userID, true)
 
+	subscription.Crawler = feedCreationRequest.Crawler || feedCreationRequest.Tracked
+
 	if storeErr := store.CreateFeed(subscription); storeErr != nil {
 		return nil, locale.NewLocalizedErrorWrapper(storeErr, "error.database_error", storeErr)
 	}
@@ -197,7 +205,99 @@ func CreateFeed(store *storage.Storage, userID int64, feedCreationRequest *model
 
 	icon.NewIconChecker(store, subscription).UpdateOrCreateFeedIcon()
 
+	if subscription.Tracked {
+		go fetchTrackedEntries(store, userID, subscription.ID, startedAt)
+	}
+
 	return subscription, nil
+}
+
+func parseFeed(tracked bool, feedURL, contentType string, body []byte) (*model.Feed, error) {
+	if tracked {
+		return tracker.Parse(feedURL, contentType, body)
+	}
+
+	return parser.ParseFeed(feedURL, bytes.NewReader(body))
+}
+
+func parseFeedError(parseErr error) *locale.LocalizedErrorWrapper {
+	switch {
+	case errors.Is(parseErr, tracker.ErrNoPosts):
+		return locale.NewLocalizedErrorWrapper(parseErr, "error.tracked_page_has_no_posts")
+	case errors.Is(parseErr, parser.ErrFeedFormatNotDetected):
+		return locale.NewLocalizedErrorWrapper(parseErr, "error.feed_format_not_detected", parseErr)
+	}
+
+	return locale.NewLocalizedErrorWrapper(parseErr, "error.unable_to_parse_feed", parseErr)
+}
+
+func fetchTrackedEntries(store *storage.Storage, userID, feedID int64, startedAt time.Time) {
+	feed, storeErr := store.FeedByID(userID, feedID)
+	if storeErr != nil || feed == nil {
+		slog.Error("Unable to load the tracked feed", slog.Int64("feed_id", feedID), slog.Any("error", storeErr))
+		return
+	}
+
+	user, storeErr := store.UserByID(userID)
+	if storeErr != nil || user == nil {
+		slog.Error("Unable to load the user of a tracked feed", slog.Int64("user_id", userID), slog.Any("error", storeErr))
+		return
+	}
+
+	entries, storeErr := store.NewEntryQueryBuilder(userID).WithFeedID(feedID).GetEntries()
+	if storeErr != nil {
+		slog.Error("Unable to load the entries of a tracked feed", slog.Int64("feed_id", feedID), slog.Any("error", storeErr))
+		return
+	}
+
+	for _, entry := range entries {
+		if err := processor.ProcessEntryWebPage(feed, entry, user); err != nil {
+			slog.Warn("Unable to fetch a tracked post", slog.String("entry_url", entry.URL), slog.Any("error", err))
+		} else if storeErr := store.UpdateEntryTitleAndContent(entry); storeErr != nil {
+			slog.Error("Unable to save a tracked post", slog.String("entry_url", entry.URL), slog.Any("error", storeErr))
+		}
+
+		if entry.Date.After(startedAt) {
+			restorePublishedDate(store, feed, entry)
+		}
+
+		time.Sleep(trackedPostFetchDelay)
+	}
+}
+
+func restorePublishedDate(store *storage.Storage, feed *model.Feed, entry *model.Entry) {
+	requestBuilder := fetcher.NewRequestBuilder().
+		WithUserAgent(feed.UserAgent, config.Opts.HTTPClientUserAgent()).
+		WithCookie(feed.Cookie, feed.FeedURL).
+		WithTimeout(config.Opts.HTTPClientTimeout()).
+		WithProxyRotator(proxyrotator.ProxyRotatorInstance).
+		WithCustomFeedProxyURL(feed.ProxyURL).
+		WithCustomApplicationProxyURL(config.Opts.HTTPClientProxyURL()).
+		UseCustomApplicationProxyURL(feed.FetchViaProxy).
+		IgnoreTLSErrors(feed.AllowSelfSignedCertificates).
+		DisableHTTP2(feed.DisableHTTP2)
+
+	responseHandler := fetcher.NewResponseHandler(requestBuilder.ExecuteRequest(entry.URL))
+	defer responseHandler.Close()
+
+	if responseHandler.LocalizedError() != nil {
+		return
+	}
+
+	body, localizedError := responseHandler.ReadBody(config.Opts.HTTPClientMaxBodySize())
+	if localizedError != nil {
+		return
+	}
+
+	published := tracker.PublishedDate(responseHandler.ContentType(), body)
+	if published.IsZero() {
+		return
+	}
+
+	entry.Date = published
+	if storeErr := store.UpdateEntryDate(entry); storeErr != nil {
+		slog.Error("Unable to save the date of a tracked post", slog.String("entry_url", entry.URL), slog.Any("error", storeErr))
+	}
 }
 
 // RefreshFeed refreshes a feed.
@@ -292,13 +392,9 @@ func RefreshFeed(store *storage.Storage, userID, feedID int64, forceRefresh bool
 			return localizedError
 		}
 
-		updatedFeed, parseErr := parser.ParseFeed(responseHandler.EffectiveURL(), bytes.NewReader(responseBody))
+		updatedFeed, parseErr := parseFeed(originalFeed.Tracked, responseHandler.EffectiveURL(), responseHandler.ContentType(), responseBody)
 		if parseErr != nil {
-			localizedError := locale.NewLocalizedErrorWrapper(parseErr, "error.unable_to_parse_feed", parseErr)
-			if errors.Is(parseErr, parser.ErrFeedFormatNotDetected) {
-				localizedError = locale.NewLocalizedErrorWrapper(parseErr, "error.feed_format_not_detected", parseErr)
-			}
-			return getTranslatedLocalizedError(store, userID, originalFeed, localizedError)
+			return getTranslatedLocalizedError(store, userID, originalFeed, parseFeedError(parseErr))
 		}
 
 		// Use the RSS TTL value, or the Cache-Control or Expires HTTP headers if available.

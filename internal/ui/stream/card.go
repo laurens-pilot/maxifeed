@@ -25,7 +25,7 @@ const (
 
 var (
 	inlineTags  = []string{"a", "abbr", "b", "cite", "code", "em", "i", "mark", "s", "small", "span", "strong", "sub", "sup", "time", "u"}
-	skippedTags = []string{"figcaption", "pre", "table"}
+	skippedTags = []string{"aside", "figcaption", "pre", "table"}
 )
 
 // Card is an entry prepared for display in the stream.

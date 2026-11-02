@@ -5,6 +5,7 @@
     <h1 id="page-header-title" dir="auto">
         <a href="{{ .feed.SiteURL }}" title="{{ .feed.SiteURL }}" {{ if $.user.OpenExternalLinksInNewTab }}target="_blank"{{ else }}rel="noopener"{{ end }} data-original-link="{{ .user.MarkReadOnView }}">{{ .feed.Title }}</a>
         <span aria-hidden="true">({{ .total }})</span>
+        {{ template "feed_source" .feed }}
     </h1>
     <span class="sr-only">
         {{ if .showOnlyUnreadEntries }}
@@ -78,6 +79,9 @@
 {{ end }}
 
 {{ define "content"}}
+{{ if .justAdded }}
+<p role="status" class="alert alert-success">{{ if .feed.Tracked }}{{ t "page.feed_entries.added_tracked" }}{{ else }}{{ t "page.feed_entries.added_rss" }}{{ end }}</p>
+{{ end }}
 {{ if ne .feed.ParsingErrorCount 0 }}
 <div role="alert" class="alert alert-error">
     <h3>{{ t "alert.feed_error" }}</h3>
